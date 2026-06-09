@@ -506,6 +506,7 @@ async function updateVoteTally() {
 // ===== CONTROLS =====
 function updateGameControls(phase) {
   const c = document.getElementById('gameControls');
+  c.classList.remove('hidden');
   c.style.display = 'flex';
   if (phase === 'night') {
     c.innerHTML = `<button class="btn btn-primary flex-1" onclick="processNight()"><span data-i18n="process-night"></span></button>`;
