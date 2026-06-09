@@ -4,8 +4,15 @@
 const DEFAULT_HEARTBEAT_TIMEOUT = 60000; // 60s inactivity = offline
 const GHOST_REMOVE_TIMEOUT = 300000;     // 5min offline = removed (lobby only)
 
-export default {
-  async fetch(request, env) {
+addEventListener('fetch', event => {
+  event.respondWith(handleRequest(event.request, event));
+});
+
+addEventListener('unhandledrejection', event => {
+  event.preventDefault();
+});
+
+async function handleRequest(request) {
     const url = new URL(request.url);
     const origin = request.headers.get('Origin') || '*';
     const method = request.method;
@@ -34,33 +41,33 @@ export default {
           werewolfChat: [], finalWords: {},
           lastWolfKingMark: null, shooterRevengePending: null,
         };
-        await env.GAME_KV.put(`room:${code}`, JSON.stringify(state));
+        await GAME_KV.put(`room:${code}`, JSON.stringify(state));
         return json({ room_code: code, host_token: hostToken }, 200, origin);
       }
 
       // GET /api/rooms/CODE
       if (path.startsWith('/api/rooms/') && method === 'GET') {
-        return handleGetRoom(path, env, origin);
+        return handleGetRoom(path, origin);
       }
 
       // POST /api/update-phase
       if (path === '/api/update-phase' && method === 'POST') {
         const body = await request.json();
-        const raw = await env.GAME_KV.get(`room:${body.room_code}`);
+        const raw = await GAME_KV.get(`room:${body.room_code}`);
         if (!raw) return json({ error: 'Room not found' }, 404, origin);
         const state = JSON.parse(raw);
         state.phase = body.phase;
         state.phaseStartedAt = Date.now();
         state.phaseDuration = body.duration || 0;
         if (body.phase === 'day_voting') state.dayVotes = [];
-        await env.GAME_KV.put(`room:${body.room_code}`, JSON.stringify(state));
+        await GAME_KV.put(`room:${body.room_code}`, JSON.stringify(state));
         return json({ success: true, phase: state.phase }, 200, origin);
       }
 
       // POST /api/players — join
       if (path === '/api/players' && method === 'POST') {
         const body = await request.json();
-        const raw = await env.GAME_KV.get(`room:${body.room_code}`);
+        const raw = await GAME_KV.get(`room:${body.room_code}`);
         if (!raw) return json({ error: 'Room not found' }, 404, origin);
         const state = JSON.parse(raw);
         // Remove old ghosts before adding new
@@ -68,21 +75,21 @@ export default {
         const userId = generateToken();
         const id = state.nextPlayerId++;
         state.players.push({ id, userId, name: body.name, alive: true, lastHeartbeat: Date.now(), online: true, joinedAt: Date.now() });
-        await env.GAME_KV.put(`room:${body.room_code}`, JSON.stringify(state));
+        await GAME_KV.put(`room:${body.room_code}`, JSON.stringify(state));
         return json({ id, player_token: userId }, 200, origin);
       }
 
       // POST /api/heartbeat — online/offline ping
       if (path === '/api/heartbeat' && method === 'POST') {
         const body = await request.json();
-        const raw = await env.GAME_KV.get(`room:${body.room_code}`);
+        const raw = await GAME_KV.get(`room:${body.room_code}`);
         if (!raw) return json({ error: 'Room not found' }, 404, origin);
         const state = JSON.parse(raw);
         const player = state.players.find(p => p.id === body.player_id);
         if (player) {
           player.lastHeartbeat = Date.now();
           player.online = true;
-          await env.GAME_KV.put(`room:${body.room_code}`, JSON.stringify(state));
+          await GAME_KV.put(`room:${body.room_code}`, JSON.stringify(state));
           return json({ success: true }, 200, origin);
         }
         return json({ error: 'Player not found' }, 404, origin);
@@ -91,7 +98,7 @@ export default {
       // POST /api/check-ghosts — sweep offline players in lobby
       if (path === '/api/check-ghosts' && method === 'POST') {
         const body = await request.json();
-        const raw = await env.GAME_KV.get(`room:${body.room_code}`);
+        const raw = await GAME_KV.get(`room:${body.room_code}`);
         if (!raw) return json({ error: 'Room not found' }, 404, origin);
         const state = JSON.parse(raw);
         if (state.phase !== 'lobby') return json({ success: true, count: 0 }, 200, origin);
@@ -102,14 +109,14 @@ export default {
           if ((now - (p.lastHeartbeat || 0)) > DEFAULT_HEARTBEAT_TIMEOUT) p.online = false;
           return true;
         });
-        await env.GAME_KV.put(`room:${body.room_code}`, JSON.stringify(state));
+        await GAME_KV.put(`room:${body.room_code}`, JSON.stringify(state));
         return json({ success: true, removed: before - state.players.length }, 200, origin);
       }
 
       // GET /api/player-online — check online status (host-side)
       if (path === '/api/player-online' && method === 'GET') {
         const code = url.searchParams.get('room_code') || '';
-        const raw = await env.GAME_KV.get(`room:${code}`);
+        const raw = await GAME_KV.get(`room:${code}`);
         if (!raw) return json({ error: 'Room not found' }, 404, origin);
         const state = JSON.parse(raw);
         const now = Date.now();
@@ -124,7 +131,7 @@ export default {
       // GET /api/players
       if (path === '/api/players' && method === 'GET') {
         const code = url.searchParams.get('room_code') || '';
-        const raw = await env.GAME_KV.get(`room:${code}`);
+        const raw = await GAME_KV.get(`room:${code}`);
         if (!raw) return json({ error: 'Room not found' }, 404, origin);
         const state = JSON.parse(raw);
         return json(state.players.map(p => ({ id: p.id, name: p.name, alive: p.alive })), 200, origin);
@@ -133,12 +140,12 @@ export default {
       // DELETE /api/players
       if (path === '/api/players' && method === 'DELETE') {
         const body = await request.json();
-        const raw = await env.GAME_KV.get(`room:${body.room_code}`);
+        const raw = await GAME_KV.get(`room:${body.room_code}`);
         if (!raw) return json({ error: 'Room not found' }, 404, origin);
         const state = JSON.parse(raw);
         if (state.hostId !== body.host_token) return json({ error: 'Forbidden' }, 403, origin);
         state.players = state.players.filter(p => p.id !== body.player_id);
-        await env.GAME_KV.put(`room:${body.room_code}`, JSON.stringify(state));
+        await GAME_KV.put(`room:${body.room_code}`, JSON.stringify(state));
         return json({ success: true }, 200, origin);
       }
 
@@ -147,7 +154,7 @@ export default {
         const code = url.searchParams.get('room_code') || '';
         const playerId = parseInt(url.searchParams.get('player_id') || '0');
         const auth = parseAuth(request);
-        const raw = await env.GAME_KV.get(`room:${code}`);
+        const raw = await GAME_KV.get(`room:${code}`);
         if (!raw) return json({ error: 'Room not found' }, 404, origin);
         const state = JSON.parse(raw);
         const p = state.players.find(p => p.id === playerId && p.userId === auth.token);
@@ -158,7 +165,7 @@ export default {
       // POST /api/assign-roles
       if (path === '/api/assign-roles' && method === 'POST') {
         const body = await request.json();
-        const raw = await env.GAME_KV.get(`room:${body.room_code}`);
+        const raw = await GAME_KV.get(`room:${body.room_code}`);
         if (!raw) return json({ error: 'Room not found' }, 404, origin);
         const state = JSON.parse(raw);
         const count = state.players.length;
@@ -202,7 +209,7 @@ export default {
         state.lastKilledName = null; state.lastDoctorSaved = false;
         state.werewolfChat = []; state.finalWords = {};
         state.lastWolfKingMark = null; state.shooterRevengePending = null;
-        await env.GAME_KV.put(`room:${body.room_code}`, JSON.stringify(state));
+        await GAME_KV.put(`room:${body.room_code}`, JSON.stringify(state));
         return json({ success: true, playerCount: count, hasExpandedRoles: hasExpanded }, 200, origin);
       }
 
@@ -210,7 +217,7 @@ export default {
       if (path === '/api/night-actions' && method === 'POST') {
         const body = await request.json();
         const auth = parseAuth(request);
-        const raw = await env.GAME_KV.get(`room:${body.room_code}`);
+        const raw = await GAME_KV.get(`room:${body.room_code}`);
         if (!raw) return json({ error: 'Room not found' }, 404, origin);
         const state = JSON.parse(raw);
         const player = state.players.find(p => p.id === body.player_id && p.userId === auth.token);
@@ -249,14 +256,14 @@ export default {
           }
         }
 
-        await env.GAME_KV.put(`room:${body.room_code}`, JSON.stringify(state));
+        await GAME_KV.put(`room:${body.room_code}`, JSON.stringify(state));
         return json(response, 200, origin);
       }
 
       // POST /api/process-night
       if (path === '/api/process-night' && method === 'POST') {
         const body = await request.json();
-        const raw = await env.GAME_KV.get(`room:${body.room_code}`);
+        const raw = await GAME_KV.get(`room:${body.room_code}`);
         if (!raw) return json({ error: 'Room not found' }, 404, origin);
         const state = JSON.parse(raw);
 
@@ -298,7 +305,7 @@ export default {
           state.phase = 'victory'; state.winner = winner;
           const result = { killedPlayer: killedName ? { name: killedName } : null, saved, winner };
           if (state.shooterRevengePending) result.shooterRevengePending = true;
-          await env.GAME_KV.put(`room:${body.room_code}`, JSON.stringify(state));
+          await GAME_KV.put(`room:${body.room_code}`, JSON.stringify(state));
           return json(result, 200, origin);
         }
 
@@ -312,7 +319,7 @@ export default {
           state.investigationResults = [];
         }
 
-        await env.GAME_KV.put(`room:${body.room_code}`, JSON.stringify(state));
+        await GAME_KV.put(`room:${body.room_code}`, JSON.stringify(state));
         return json({ killedPlayer: killedName ? { name: killedName } : null, saved, round: state.round, shooterRevengePending: !!state.shooterRevengePending }, 200, origin);
       }
 
@@ -320,7 +327,7 @@ export default {
       if (path === '/api/shooter-revenge' && method === 'POST') {
         const body = await request.json();
         const auth = parseAuth(request);
-        const raw = await env.GAME_KV.get(`room:${body.room_code}`);
+        const raw = await GAME_KV.get(`room:${body.room_code}`);
         if (!raw) return json({ error: 'Room not found' }, 404, origin);
         const state = JSON.parse(raw);
         const player = state.players.find(p => p.id === body.player_id && p.userId === auth.token);
@@ -336,14 +343,14 @@ export default {
         const winner = checkWin(state);
         if (winner) {
           state.phase = 'victory'; state.winner = winner;
-          await env.GAME_KV.put(`room:${body.room_code}`, JSON.stringify(state));
+          await GAME_KV.put(`room:${body.room_code}`, JSON.stringify(state));
           return json({ killedPlayer: { name: target.name }, winner }, 200, origin);
         }
         state.phase = 'day_discussion';
         state.phaseStartedAt = Date.now();
         state.nightActions = [];
         state.investigationResults = [];
-        await env.GAME_KV.put(`room:${body.room_code}`, JSON.stringify(state));
+        await GAME_KV.put(`room:${body.room_code}`, JSON.stringify(state));
         return json({ killedPlayer: { name: target.name }, saved: false, round: state.round }, 200, origin);
       }
 
@@ -351,21 +358,21 @@ export default {
       if (path === '/api/day-votes' && method === 'POST') {
         const body = await request.json();
         const auth = parseAuth(request);
-        const raw = await env.GAME_KV.get(`room:${body.room_code}`);
+        const raw = await GAME_KV.get(`room:${body.room_code}`);
         if (!raw) return json({ error: 'Room not found' }, 404, origin);
         const state = JSON.parse(raw);
         const player = state.players.find(p => p.id === body.voter_id && p.userId === auth.token);
         if (!player) return json({ error: 'Forbidden' }, 403, origin);
         state.dayVotes = state.dayVotes.filter(v => v.voterId !== body.voter_id);
         state.dayVotes.push({ voterId: body.voter_id, targetId: body.target_id });
-        await env.GAME_KV.put(`room:${body.room_code}`, JSON.stringify(state));
+        await GAME_KV.put(`room:${body.room_code}`, JSON.stringify(state));
         return json({ success: true }, 200, origin);
       }
 
       // GET /api/vote-tally
       if (path === '/api/vote-tally' && method === 'GET') {
         const code = url.searchParams.get('room_code') || '';
-        const raw = await env.GAME_KV.get(`room:${code}`);
+        const raw = await GAME_KV.get(`room:${code}`);
         if (!raw) return json({ error: 'Room not found' }, 404, origin);
         const state = JSON.parse(raw);
         const tally = {};
@@ -381,7 +388,7 @@ export default {
       // POST /api/process-day
       if (path === '/api/process-day' && method === 'POST') {
         const body = await request.json();
-        const raw = await env.GAME_KV.get(`room:${body.room_code}`);
+        const raw = await GAME_KV.get(`room:${body.room_code}`);
         if (!raw) return json({ error: 'Room not found' }, 404, origin);
         const state = JSON.parse(raw);
         const tally = {};
@@ -411,19 +418,19 @@ export default {
         const winner = checkWin(state);
         if (winner) {
           state.phase = 'victory'; state.winner = winner;
-          await env.GAME_KV.put(`room:${body.room_code}`, JSON.stringify(state));
+          await GAME_KV.put(`room:${body.room_code}`, JSON.stringify(state));
           return json({ eliminatedPlayer: eliminatedName ? { name: eliminatedName, role: eliminatedRole } : null, voteTally: tally, winner }, 200, origin);
         }
         state.phase = 'day_results';
         state.dayVotes = [];
-        await env.GAME_KV.put(`room:${body.room_code}`, JSON.stringify(state));
+        await GAME_KV.put(`room:${body.room_code}`, JSON.stringify(state));
         return json({ eliminatedPlayer: eliminatedName ? { name: eliminatedName, role: eliminatedRole } : null, voteTally: tally, shooterRevengePending: eliminatedRole === 'shooter' }, 200, origin);
       }
 
       // POST /api/continue-to-night
       if (path === '/api/continue-to-night' && method === 'POST') {
         const body = await request.json();
-        const raw = await env.GAME_KV.get(`room:${body.room_code}`);
+        const raw = await GAME_KV.get(`room:${body.room_code}`);
         if (!raw) return json({ error: 'Room not found' }, 404, origin);
         const state = JSON.parse(raw);
         state.round++;
@@ -432,14 +439,14 @@ export default {
         state.nightActions = [];
         state.investigationResults = [];
         state.werewolfChat = [];
-        await env.GAME_KV.put(`room:${body.room_code}`, JSON.stringify(state));
+        await GAME_KV.put(`room:${body.room_code}`, JSON.stringify(state));
         return json({ success: true, round: state.round }, 200, origin);
       }
 
       // GET /api/night-progress
       if (path === '/api/night-progress' && method === 'GET') {
         const code = url.searchParams.get('room_code') || '';
-        const raw = await env.GAME_KV.get(`room:${code}`);
+        const raw = await GAME_KV.get(`room:${code}`);
         if (!raw) return json({ error: 'Room not found' }, 404, origin);
         const state = JSON.parse(raw);
         const alivePlayers = state.players.filter(p => p.alive);
@@ -459,7 +466,7 @@ export default {
       if (path === '/api/check-restrictions' && method === 'GET') {
         const code = url.searchParams.get('room_code') || '';
         const playerId = parseInt(url.searchParams.get('player_id') || '0');
-        const raw = await env.GAME_KV.get(`room:${code}`);
+        const raw = await GAME_KV.get(`room:${code}`);
         if (!raw) return json({ error: 'Room not found' }, 404, origin);
         const state = JSON.parse(raw);
         const player = state.players.find(p => p.id === playerId);
@@ -475,14 +482,14 @@ export default {
       if (path === '/api/werewolf-chat' && method === 'POST') {
         const body = await request.json();
         const auth = parseAuth(request);
-        const raw = await env.GAME_KV.get(`room:${body.room_code}`);
+        const raw = await GAME_KV.get(`room:${body.room_code}`);
         if (!raw) return json({ error: 'Room not found' }, 404, origin);
         const state = JSON.parse(raw);
         const player = state.players.find(p => p.id === body.player_id && p.userId === auth.token);
         if (!player || (player.role !== 'werewolf' && player.role !== 'wolf_king')) return json({ error: 'Forbidden' }, 403, origin);
         state.werewolfChat.push({ playerId: player.id, playerName: player.name, text: body.text, at: Date.now() });
         if (state.werewolfChat.length > 50) state.werewolfChat = state.werewolfChat.slice(-50);
-        await env.GAME_KV.put(`room:${body.room_code}`, JSON.stringify(state));
+        await GAME_KV.put(`room:${body.room_code}`, JSON.stringify(state));
         return json({ success: true }, 200, origin);
       }
 
@@ -491,7 +498,7 @@ export default {
         const code = url.searchParams.get('room_code') || '';
         const playerId = parseInt(url.searchParams.get('player_id') || '0');
         const auth = parseAuth(request);
-        const raw = await env.GAME_KV.get(`room:${code}`);
+        const raw = await GAME_KV.get(`room:${code}`);
         if (!raw) return json({ error: 'Room not found' }, 404, origin);
         const state = JSON.parse(raw);
         const player = state.players.find(p => p.id === playerId && p.userId === auth.token);
@@ -503,20 +510,20 @@ export default {
       if (path === '/api/final-words' && method === 'POST') {
         const body = await request.json();
         const auth = parseAuth(request);
-        const raw = await env.GAME_KV.get(`room:${body.room_code}`);
+        const raw = await GAME_KV.get(`room:${body.room_code}`);
         if (!raw) return json({ error: 'Room not found' }, 404, origin);
         const state = JSON.parse(raw);
         const player = state.players.find(p => p.id === body.player_id && p.userId === auth.token);
         if (!player) return json({ error: 'Forbidden' }, 403, origin);
         state.finalWords[body.player_id] = { name: player.name, text: body.text };
-        await env.GAME_KV.put(`room:${body.room_code}`, JSON.stringify(state));
+        await GAME_KV.put(`room:${body.room_code}`, JSON.stringify(state));
         return json({ success: true }, 200, origin);
       }
 
       // GET /api/final-words
       if (path === '/api/final-words' && method === 'GET') {
         const code = url.searchParams.get('room_code') || '';
-        const raw = await env.GAME_KV.get(`room:${code}`);
+        const raw = await GAME_KV.get(`room:${code}`);
         if (!raw) return json({ error: 'Room not found' }, 404, origin);
         const state = JSON.parse(raw);
         return json({ finalWords: state.finalWords }, 200, origin);
@@ -526,8 +533,7 @@ export default {
     } catch (err) {
       return json({ error: err.message || 'Internal error' }, 500, origin);
     }
-  }
-};
+}
 
 function checkWin(state) {
   const alive = state.players.filter(p => p.alive);
@@ -538,9 +544,9 @@ function checkWin(state) {
   return null;
 }
 
-async function handleGetRoom(path, env, origin) {
+async function handleGetRoom(path, origin) {
   const code = path.replace('/api/rooms/', '');
-  const raw = await env.GAME_KV.get(`room:${code}`);
+  const raw = await GAME_KV.get(`room:${code}`);
   if (!raw) return json({ error: 'Room not found' }, 404, origin);
   const state = JSON.parse(raw);
   const now = Date.now();
