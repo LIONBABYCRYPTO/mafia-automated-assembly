@@ -1,0 +1,4 @@
+# Mafia: The Automated Assembly - GitHub Pages config
+# This is a static HTML/JS app, not Jekyll
+plugins: []
+markdown: none
