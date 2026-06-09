@@ -1,5 +1,5 @@
 // Mafia Game API — Cloudflare Worker (fetch export format)
-// Game state stored as JSON in Workers KV. 2s polling on frontend handles eventual consistency.
+// All features: timer sync, player removal, werewolf chat, final words, vote tracking, role config
 
 export default {
   async fetch(request, env) {
@@ -19,34 +19,40 @@ export default {
         const body = await request.json();
         const code = body.room_code || Math.random().toString(36).substring(2, 8).toUpperCase();
         const hostToken = generateToken();
+        const wolfCount = body.wolf_count || 0;
 
         const state = {
           roomCode: code, hostId: hostToken, phase: 'lobby', round: 1,
           winner: null, players: [], nextPlayerId: 1,
           nightActions: [], dayVotes: [], investigationResults: [],
           lastKilledName: null, lastDoctorSaved: false,
+          customWolfCount: wolfCount,
+          phaseStartedAt: Date.now(),
+          phaseDuration: 0,
+          werewolfChat: [],
+          finalWords: {},
         };
         await env.GAME_KV.put(`room:${code}`, JSON.stringify(state));
-
         return json({ room_code: code, host_token: hostToken }, 200, origin);
       }
 
-      // GET /api/rooms/CODE — get room state
+      // GET /api/rooms/CODE
       if (path.startsWith('/api/rooms/') && method === 'GET') {
         const code = path.replace('/api/rooms/', '');
         const raw = await env.GAME_KV.get(`room:${code}`);
         if (!raw) return json({ error: 'Room not found' }, 404, origin);
-        const state = JSON.parse(raw);
-        return json(publicState(state), 200, origin);
+        return json(publicState(JSON.parse(raw)), 200, origin);
       }
 
-      // POST /api/update-phase — advance phase
+      // POST /api/update-phase
       if (path === '/api/update-phase' && method === 'POST') {
         const body = await request.json();
         const raw = await env.GAME_KV.get(`room:${body.room_code}`);
         if (!raw) return json({ error: 'Room not found' }, 404, origin);
         const state = JSON.parse(raw);
         state.phase = body.phase;
+        state.phaseStartedAt = Date.now();
+        state.phaseDuration = body.duration || 0;
         if (body.phase === 'day_voting') state.dayVotes = [];
         await env.GAME_KV.put(`room:${body.room_code}`, JSON.stringify(state));
         return json({ success: true, phase: state.phase }, 200, origin);
@@ -74,7 +80,19 @@ export default {
         return json(state.players.map(p => ({ id: p.id, name: p.name, alive: p.alive })), 200, origin);
       }
 
-      // GET /api/player-roles
+      // DELETE /api/players — remove player (host only, needs host_token in body)
+      if (path === '/api/players' && method === 'DELETE') {
+        const body = await request.json();
+        const raw = await env.GAME_KV.get(`room:${body.room_code}`);
+        if (!raw) return json({ error: 'Room not found' }, 404, origin);
+        const state = JSON.parse(raw);
+        if (state.hostId !== body.host_token) return json({ error: 'Forbidden' }, 403, origin);
+        state.players = state.players.filter(p => p.id !== body.player_id);
+        await env.GAME_KV.put(`room:${body.room_code}`, JSON.stringify(state));
+        return json({ success: true }, 200, origin);
+      }
+
+      // GET /api/player-roles?room_code=X&player_id=X
       if (path === '/api/player-roles' && method === 'GET') {
         const code = url.searchParams.get('room_code') || '';
         const playerId = parseInt(url.searchParams.get('player_id') || '0');
@@ -84,7 +102,7 @@ export default {
         const state = JSON.parse(raw);
         const p = state.players.find(p => p.id === playerId && p.userId === auth.token);
         if (!p) return json({ error: 'Forbidden or not found' }, 403, origin);
-        return json({ role: p.role || null }, 200, origin);
+        return json({ role: p.role || null, alive: p.alive }, 200, origin);
       }
 
       // POST /api/assign-roles
@@ -97,7 +115,10 @@ export default {
         const count = state.players.length;
         if (count < 6) return json({ error: `Need at least 6 players, got ${count}` }, 400, origin);
 
-        const numWolves = count <= 7 ? 2 : Math.floor(count / 4);
+        let numWolves = state.customWolfCount || Math.floor(count / 4);
+        if (numWolves < 1) numWolves = 1;
+        if (numWolves > Math.floor(count / 2)) numWolves = Math.floor(count / 2);
+
         const roles = [];
         for (let i = 0; i < count; i++) {
           if (i < numWolves) roles.push('werewolf');
@@ -112,11 +133,14 @@ export default {
         state.players.forEach((p, i) => p.role = roles[i]);
         state.phase = 'night';
         state.round = 1;
+        state.phaseStartedAt = Date.now();
         state.nightActions = [];
         state.dayVotes = [];
         state.investigationResults = [];
         state.lastKilledName = null;
         state.lastDoctorSaved = false;
+        state.werewolfChat = [];
+        state.finalWords = {};
         await env.GAME_KV.put(`room:${body.room_code}`, JSON.stringify(state));
         return json({ success: true, playerCount: count }, 200, origin);
       }
@@ -138,12 +162,11 @@ export default {
         if (body.action_type === 'investigate' && body.target_id) {
           const target = state.players.find(p => p.id === body.target_id);
           if (target && target.role) {
-            response.investigation = { targetId: target.id, isWerewolf: target.role === 'werewolf' };
+            response.investigation = { targetId: target.id, targetName: target.name, isWerewolf: target.role === 'werewolf' };
             state.investigationResults = state.investigationResults.filter(r => r.investigatorId !== body.player_id);
-            state.investigationResults.push({ investigatorId: body.player_id, targetId: target.id, targetRole: target.role });
+            state.investigationResults.push({ investigatorId: body.player_id, targetId: target.id, targetRole: target.role, targetName: target.name });
           }
         }
-
         await env.GAME_KV.put(`room:${body.room_code}`, JSON.stringify(state));
         return json(response, 200, origin);
       }
@@ -182,6 +205,7 @@ export default {
         }
 
         state.phase = 'day_discussion';
+        state.phaseStartedAt = Date.now();
         state.nightActions = [];
         state.investigationResults = [];
         await env.GAME_KV.put(`room:${body.room_code}`, JSON.stringify(state));
@@ -197,11 +221,26 @@ export default {
         const state = JSON.parse(raw);
         const player = state.players.find(p => p.id === body.voter_id && p.userId === auth.token);
         if (!player) return json({ error: 'Forbidden' }, 403, origin);
-
         state.dayVotes = state.dayVotes.filter(v => v.voterId !== body.voter_id);
         state.dayVotes.push({ voterId: body.voter_id, targetId: body.target_id });
         await env.GAME_KV.put(`room:${body.room_code}`, JSON.stringify(state));
         return json({ success: true }, 200, origin);
+      }
+
+      // GET /api/vote-tally?room_code=CODE
+      if (path === '/api/vote-tally' && method === 'GET') {
+        const code = url.searchParams.get('room_code') || '';
+        const raw = await env.GAME_KV.get(`room:${code}`);
+        if (!raw) return json({ error: 'Room not found' }, 404, origin);
+        const state = JSON.parse(raw);
+        const tally = {};
+        state.dayVotes.forEach(v => { if (v.targetId) tally[v.targetId] = (tally[v.targetId] || 0) + 1; });
+        const nameMap = {};
+        state.players.forEach(p => { nameMap[p.id] = p.name; });
+        const result = Object.keys(tally).map(id => ({
+          playerId: Number(id), playerName: nameMap[Number(id)] || 'Unknown', votes: tally[id],
+        })).sort((a, b) => b.votes - a.votes);
+        return json({ tally: result, totalVotes: state.dayVotes.length, totalPlayers: state.players.filter(p => p.alive).length }, 200, origin);
       }
 
       // POST /api/process-day
@@ -245,8 +284,10 @@ export default {
         const state = JSON.parse(raw);
         state.round++;
         state.phase = 'night';
+        state.phaseStartedAt = Date.now();
         state.nightActions = [];
         state.investigationResults = [];
+        state.werewolfChat = [];
         await env.GAME_KV.put(`room:${body.room_code}`, JSON.stringify(state));
         return json({ success: true, round: state.round }, 200, origin);
       }
@@ -257,24 +298,66 @@ export default {
         const raw = await env.GAME_KV.get(`room:${code}`);
         if (!raw) return json({ error: 'Room not found' }, 404, origin);
         const state = JSON.parse(raw);
-
         const alivePlayers = state.players.filter(p => p.alive);
-        const wolves = alivePlayers.filter(p => p.role === 'werewolf').length;
-        const seers = alivePlayers.filter(p => p.role === 'seer').length;
-        const doctors = alivePlayers.filter(p => p.role === 'doctor').length;
-
-        const killActions = state.nightActions.filter(a => a.actionType === 'kill').length;
-        const invActions = state.nightActions.filter(a => a.actionType === 'investigate').length;
-        const docActions = state.nightActions.filter(a => a.actionType === 'protect').length;
-
         return json({
-          aliveWolfCount: wolves,
-          aliveSeerCount: seers,
-          aliveDocCount: doctors,
-          killActionsSubmitted: killActions,
-          investigateActionsSubmitted: invActions,
-          protectActionsSubmitted: docActions,
+          aliveWolfCount: alivePlayers.filter(p => p.role === 'werewolf').length,
+          aliveSeerCount: alivePlayers.filter(p => p.role === 'seer').length,
+          aliveDocCount: alivePlayers.filter(p => p.role === 'doctor').length,
+          killActionsSubmitted: state.nightActions.filter(a => a.actionType === 'kill').length,
+          investigateActionsSubmitted: state.nightActions.filter(a => a.actionType === 'investigate').length,
+          protectActionsSubmitted: state.nightActions.filter(a => a.actionType === 'protect').length,
         }, 200, origin);
+      }
+
+      // POST /api/werewolf-chat
+      if (path === '/api/werewolf-chat' && method === 'POST') {
+        const body = await request.json();
+        const auth = parseAuth(request);
+        const raw = await env.GAME_KV.get(`room:${body.room_code}`);
+        if (!raw) return json({ error: 'Room not found' }, 404, origin);
+        const state = JSON.parse(raw);
+        const player = state.players.find(p => p.id === body.player_id && p.userId === auth.token);
+        if (!player || player.role !== 'werewolf') return json({ error: 'Forbidden' }, 403, origin);
+        state.werewolfChat.push({ playerId: player.id, playerName: player.name, text: body.text, at: Date.now() });
+        if (state.werewolfChat.length > 50) state.werewolfChat = state.werewolfChat.slice(-50);
+        await env.GAME_KV.put(`room:${body.room_code}`, JSON.stringify(state));
+        return json({ success: true }, 200, origin);
+      }
+
+      // GET /api/werewolf-chat?room_code=CODE&player_id=X
+      if (path === '/api/werewolf-chat' && method === 'GET') {
+        const code = url.searchParams.get('room_code') || '';
+        const playerId = parseInt(url.searchParams.get('player_id') || '0');
+        const auth = parseAuth(request);
+        const raw = await env.GAME_KV.get(`room:${code}`);
+        if (!raw) return json({ error: 'Room not found' }, 404, origin);
+        const state = JSON.parse(raw);
+        const player = state.players.find(p => p.id === playerId && p.userId === auth.token);
+        if (!player || player.role !== 'werewolf') return json({ error: 'Forbidden' }, 403, origin);
+        return json({ messages: state.werewolfChat }, 200, origin);
+      }
+
+      // POST /api/final-words
+      if (path === '/api/final-words' && method === 'POST') {
+        const body = await request.json();
+        const auth = parseAuth(request);
+        const raw = await env.GAME_KV.get(`room:${body.room_code}`);
+        if (!raw) return json({ error: 'Room not found' }, 404, origin);
+        const state = JSON.parse(raw);
+        const player = state.players.find(p => p.id === body.player_id && p.userId === auth.token);
+        if (!player) return json({ error: 'Forbidden' }, 403, origin);
+        state.finalWords[body.player_id] = { name: player.name, text: body.text };
+        await env.GAME_KV.put(`room:${body.room_code}`, JSON.stringify(state));
+        return json({ success: true }, 200, origin);
+      }
+
+      // GET /api/final-words?room_code=CODE
+      if (path === '/api/final-words' && method === 'GET') {
+        const code = url.searchParams.get('room_code') || '';
+        const raw = await env.GAME_KV.get(`room:${code}`);
+        if (!raw) return json({ error: 'Room not found' }, 404, origin);
+        const state = JSON.parse(raw);
+        return json({ finalWords: state.finalWords }, 200, origin);
       }
 
       return json({ error: 'Not found' }, 404, origin);
@@ -300,6 +383,9 @@ function publicState(state) {
     aliveCount: state.players.filter(p => p.alive).length,
     lastKilledName: state.lastKilledName,
     lastDoctorSaved: state.lastDoctorSaved,
+    phaseStartedAt: state.phaseStartedAt,
+    phaseDuration: state.phaseDuration,
+    finalWords: Object.values(state.finalWords || {}),
     players: state.players.map(p => ({ id: p.id, name: p.name, alive: p.alive })),
   };
 }
@@ -312,11 +398,7 @@ function generateToken() {
 }
 
 function corsHeaders(origin) {
-  return {
-    'Access-Control-Allow-Origin': origin || '*',
-    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-  };
+  return { 'Access-Control-Allow-Origin': origin || '*', 'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type, Authorization' };
 }
 
 function parseAuth(req) {
@@ -326,8 +408,5 @@ function parseAuth(req) {
 }
 
 function json(data, status = 200, origin = '*') {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: { ...corsHeaders(origin), 'Content-Type': 'application/json' },
-  });
+  return new Response(JSON.stringify(data), { status, headers: { ...corsHeaders(origin), 'Content-Type': 'application/json' } });
 }

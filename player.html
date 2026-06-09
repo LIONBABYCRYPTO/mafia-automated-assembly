@@ -136,27 +136,6 @@
     document.getElementById('joinRoomCode').textContent = roomCode || '---';
     if (!roomCode) { document.getElementById('joinError').textContent = 'No room code in URL'; document.getElementById('joinError').classList.remove('hidden'); }
 
-    // ── RECONNECT ON REFRESH ──
-    (function tryReconnect() {
-      var saved = JSON.parse(localStorage.getItem('mafia_player_' + roomCode) || 'null');
-      if (saved && saved.playerId && saved.playerToken) {
-        playerId = saved.playerId;
-        playerToken = saved.playerToken;
-        // Verify player still exists in room
-        api('/api/players?room_code=' + roomCode).then(function(players) {
-          if (!players) return;
-          var me = players.find(function(p) { return p.id === playerId; });
-          if (me) {
-            document.getElementById('joinScreen').classList.add('hidden');
-            document.getElementById('waitingScreen').classList.remove('hidden');
-            startPolling();
-          } else {
-            localStorage.removeItem('mafia_player_' + roomCode);
-          }
-        }).catch(function() {});
-      }
-    })();
-
     // ── JOIN ──
     function joinGame() {
       var name = document.getElementById('playerNameInput').value.trim();

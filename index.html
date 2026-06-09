@@ -53,6 +53,7 @@
         <div class="config-row"><label>Night (sec)</label><input type="number" id="nightDuration" value="60" min="20" max="180"></div>
         <div class="config-row"><label>Discussion (sec)</label><input type="number" id="discussionDuration" value="180" min="30" max="300"></div>
         <div class="config-row"><label>Vote (sec)</label><input type="number" id="voteDuration" value="60" min="20" max="120"></div>
+        <div class="config-row"><label>🐺 Werewolves</label><input type="number" id="wolfCount" value="0" min="0" max="10" title="0 = auto (1 per 4 players)"></div>
       </div>
       <button class="btn btn-success btn-lg" id="startGameBtn" disabled>🚀 Start Game</button>
       <p style="color: var(--text-secondary); font-size: 0.9rem; margin-top: 8px;">Need at least 6 players</p>
@@ -79,7 +80,9 @@
       <div style="text-align:center;margin-top:16px;">
         <p style="color:var(--text-secondary);font-size:0.9rem;">🟢 Alive <span id="aliveCounter">0</span></p>
         <div class="player-grid" id="gamePlayerDots"></div>
+        <div id="playerNameList" style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-top:8px;"></div>
       </div>
+      <div id="finalWordsDisplay" class="hidden card" style="margin-top:12px;text-align:center;"></div>
     </div>
 
     <!-- VICTORY VIEW -->
