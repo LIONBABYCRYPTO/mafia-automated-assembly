@@ -251,6 +251,32 @@ export default {
         return json({ success: true, round: state.round }, 200, origin);
       }
 
+      // GET /api/night-progress?room_code=CODE
+      if (path === '/api/night-progress' && method === 'GET') {
+        const code = url.searchParams.get('room_code') || '';
+        const raw = await env.GAME_KV.get(`room:${code}`);
+        if (!raw) return json({ error: 'Room not found' }, 404, origin);
+        const state = JSON.parse(raw);
+
+        const alivePlayers = state.players.filter(p => p.alive);
+        const wolves = alivePlayers.filter(p => p.role === 'werewolf').length;
+        const seers = alivePlayers.filter(p => p.role === 'seer').length;
+        const doctors = alivePlayers.filter(p => p.role === 'doctor').length;
+
+        const killActions = state.nightActions.filter(a => a.actionType === 'kill').length;
+        const invActions = state.nightActions.filter(a => a.actionType === 'investigate').length;
+        const docActions = state.nightActions.filter(a => a.actionType === 'protect').length;
+
+        return json({
+          aliveWolfCount: wolves,
+          aliveSeerCount: seers,
+          aliveDocCount: doctors,
+          killActionsSubmitted: killActions,
+          investigateActionsSubmitted: invActions,
+          protectActionsSubmitted: docActions,
+        }, 200, origin);
+      }
+
       return json({ error: 'Not found' }, 404, origin);
     } catch (err) {
       return json({ error: err.message || 'Internal error' }, 500, origin);

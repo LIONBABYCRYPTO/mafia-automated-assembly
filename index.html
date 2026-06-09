@@ -225,14 +225,13 @@
 
     function updateNightActionCounts() {
       if (!roomCode || !currentRound) return;
-      api('/api/night-actions?room_code=' + roomCode + '&round=' + currentRound).then(function(actions) {
-        if (!actions) return;
-        var kills = actions.filter(function(a) { return a.action_type === 'kill'; }).length;
-        var invs = actions.filter(function(a) { return a.action_type === 'investigate'; }).length;
-        var docs = actions.filter(function(a) { return a.action_type === 'protect'; }).length;
-        document.getElementById('nightActionCount').textContent = kills;
-        document.getElementById('seerActionCount').textContent = invs;
-        document.getElementById('docActionCount').textContent = docs;
+      api('/api/night-progress?room_code=' + roomCode).then(function(data) {
+        if (!data) return;
+        document.getElementById('nightActionCount').textContent = data.killActionsSubmitted || 0;
+        document.getElementById('seerActionCount').textContent = data.investigateActionsSubmitted || 0;
+        document.getElementById('seerTotal').textContent = data.aliveSeerCount || 0;
+        document.getElementById('docActionCount').textContent = data.protectActionsSubmitted || 0;
+        document.getElementById('docTotal').textContent = data.aliveDocCount || 0;
       }).catch(function() {});
     }
 
