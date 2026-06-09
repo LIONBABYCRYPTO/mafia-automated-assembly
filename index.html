@@ -282,7 +282,7 @@ async function createRoom() {
     const r = await fetch(API_URL + '/api/rooms', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: '{}'
+      body: JSON.stringify({wolf_count: parseInt(document.getElementById('wolfCountSlider').value)})
     });
     const data = await r.json();
     roomCode = data.room_code;
