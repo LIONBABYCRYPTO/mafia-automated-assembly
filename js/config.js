@@ -1,3 +1,2 @@
-// API is served from Cloudflare Pages Functions — same origin, /api/* routes
-// No URL config needed — use relative paths
-window.API_URL = "";
+// Cloudflare Worker API
+window.API_URL = "https://mafia-game.lionbabycrypto.workers.dev";
