@@ -56,7 +56,7 @@
         <div class="config-row"><label>🐺 Werewolves</label><input type="number" id="wolfCount" value="0" min="0" max="10" title="0 = auto (1 per 4 players)"></div>
       </div>
       <button class="btn btn-success btn-lg" id="startGameBtn" disabled>🚀 Start Game</button>
-      <p style="color: var(--text-secondary); font-size: 0.9rem; margin-top: 8px;">Need at least 6 players</p>
+      <p style="color: var(--text-secondary); font-size: 0.9rem; margin-top: 8px;">Need at least 6 players • 12+ adds Wolf King & Shooter</p>
     </div>
 
     <!-- GAME VIEW -->
@@ -71,6 +71,8 @@
           <span id="nightActionCount">0</span> werewolf votes •
           <span id="seerActionCount">0</span>/<span id="seerTotal">0</span> investigations •
           <span id="docActionCount">0</span>/<span id="docTotal">0</span> protections
+          <span id="wolfMarkDisplay" style="display:none;margin-left:8px;">👑 <span id="wolfKingMarkCount">0</span></span>
+          <span id="shooterPendingDisplay" style="display:none;margin-left:8px;">🔫 pending</span>
         </p>
       </div>
       <div id="gameContent"></div>
@@ -279,6 +281,13 @@
         document.getElementById('seerTotal').textContent = data.aliveSeerCount || 0;
         document.getElementById('docActionCount').textContent = data.protectActionsSubmitted || 0;
         document.getElementById('docTotal').textContent = data.aliveDocCount || 0;
+        var wm = document.getElementById('wolfMarkDisplay');
+        if (data.aliveWolfKingCount > 0) {
+          wm.style.display = 'inline';
+          document.getElementById('wolfKingMarkCount').textContent = data.killActionsSubmitted > 0 ? '📌' : '○';
+        } else { wm.style.display = 'none'; }
+        var sp = document.getElementById('shooterPendingDisplay');
+        if (data.shooterRevengePending) { sp.style.display = 'inline'; } else { sp.style.display = 'none'; }
       }).catch(function() {});
     }
 
@@ -463,8 +472,8 @@
 
       if (eliminated) {
         playDrumroll();
-        var alignment = eliminated.role === 'werewolf' ? '🐺 Werewolf' : '🧑‍🌾 Villager';
-        var alignColor = eliminated.role === 'werewolf' ? 'var(--accent-werewolf)' : 'var(--accent-villager)';
+        var alignment = eliminated.role === 'werewolf' ? '🐺 Werewolf' : eliminated.role === 'wolf_king' ? '👑 Wolf King' : eliminated.role === 'shooter' ? '🔫 Shooter' : '🧑‍🌾 Villager';
+        var alignColor = (eliminated.role === 'werewolf' || eliminated.role === 'wolf_king') ? 'var(--accent-werewolf)' : 'var(--accent-villager)';
         html += '<div class="phase-banner phase-result elimination-flash fade-in" style="margin-top:16px;">⚖️ <strong>' + eliminated.name + '</strong> eliminated!<br><span style="font-size:1.4rem;margin-top:8px;display:block;">Alignment: <strong style="color:' + alignColor + ';">' + alignment + '</strong></span></div>';
       } else {
         html += '<div class="elimination-result" style="color:var(--accent-gold);">⚖️ No one was eliminated.</div>';

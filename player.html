@@ -23,6 +23,8 @@
     .role-villager { background:rgba(46,204,113,0.12); border-color:var(--accent-villager); }
     .role-seer { background:rgba(52,152,219,0.12); border-color:var(--accent-seer); }
     .role-doctor { background:rgba(255,107,157,0.12); border-color:var(--accent-doctor); }
+    .role-wolf_king { background:rgba(128,0,128,0.12); border-color:purple; }
+    .role-shooter { background:rgba(255,165,0,0.12); border-color:orange; }
 
     .night-screen { text-align:center; padding:40px 20px; }
     .action-list { display:flex; flex-direction:column; gap:8px; margin:20px 0; max-height:50vh; overflow-y:auto; }
@@ -138,6 +140,7 @@
     var playerRole = null;
     var currentRound = 1;
     var selectedTarget = null;
+    var selectedMarkTarget = null;
     var pollInterval = null;
     var lastPhase = null;
     var nightActionSubmitted = false;
@@ -298,13 +301,15 @@
 
     // ── ROLE REVEAL ──
     function showRoleReveal(role) {
-      var emojis = { werewolf: '🐺', villager: '🧑‍🌾', seer: '🔮', doctor: '💉' };
-      var names = { werewolf: 'Werewolf', villager: 'Villager', seer: 'Seer', doctor: 'Doctor' };
+      var emojis = { werewolf: '🐺', villager: '🧑‍🌾', seer: '🔮', doctor: '💉', wolf_king: '👑', shooter: '🔫' };
+      var names = { werewolf: 'Werewolf', villager: 'Villager', seer: 'Seer', doctor: 'Doctor', wolf_king: 'Wolf King', shooter: 'Shooter' };
       var descs = {
         werewolf: 'Eliminate villagers at night without being caught.',
         villager: 'Find and vote out the werewolves during the day.',
-        seer: 'Investigate one player each night to learn their true identity.',
-        doctor: 'Protect one player each night from the werewolves\' attack.'
+        seer: 'Investigate one player each night to learn if they are Good or Bad.',
+        doctor: 'Protect one player each night from the werewolves. Cannot self-protect or save the same person twice in a row.',
+        wolf_king: 'Kill with the werewolves at night. Secretly mark one player - when you die, they die too.',
+        shooter: 'You have no night action. If you are eliminated, you take one revenge shot at any player.'
       };
 
       document.getElementById('roleEmoji').textContent = emojis[role] || '❓';
@@ -323,14 +328,17 @@
       document.getElementById('nightScreen').classList.remove('hidden');
       playNightJingle();
 
-      var emojiMap = { werewolf: '🐺', villager: '🧑‍🌾', seer: '🔮', doctor: '💉' };
-      var nameMap = { werewolf: 'Werewolf', villager: 'Villager', seer: 'Seer', doctor: 'Doctor' };
+      var emojiMap = { werewolf: '🐺', villager: '🧑‍🌾', seer: '🔮', doctor: '💉', wolf_king: '👑', shooter: '🔫' };
+      var nameMap = { werewolf: 'Werewolf', villager: 'Villager', seer: 'Seer', doctor: 'Doctor', wolf_king: 'Wolf King', shooter: 'Shooter' };
       var badgeHtml = '<div style="text-align:center;font-size:0.9rem;margin-bottom:4px;opacity:0.7;">Your role: ' + emojiMap[playerRole] + ' <strong>' + nameMap[playerRole] + '</strong></div>';
 
       var roleSpecific = {
         werewolf: { emoji: '🐺', title: '🌙 Night ' + round + ' — Choose your victim', desc: 'Select a player to eliminate', actions: ['kill'] },
-        seer: { emoji: '🔮', title: '🌙 Night ' + round + ' — Investigate', desc: 'Select a player to investigate', actions: ['investigate'] },
-        doctor: { emoji: '💉', title: '🌙 Night ' + round + ' — Protect', desc: 'Select a player to save', actions: ['protect'] },
+        wolf_king: { emoji: '👑', title: '🌙 Night ' + round + ' — Kill & Mark', desc: 'Select a victim AND a mark target', actions: ['kill', 'mark'] },
+        seer: { emoji: '🔮', title: '🌙 Night ' + round + ' — Investigate', desc: 'Select a player to investigate (Good or Bad)', actions: ['investigate'] },
+        doctor: { emoji: '💉', title: '🌙 Night ' + round + ' — Protect', desc: 'Select a player to save (not yourself, not same as last night)', actions: ['protect'] },
+        shooter: { emoji: '🔫', title: 'Night ' + round, desc: 'You have no night action. Wait for your moment.', actions: [] },
+
         villager: { emoji: '🌙', title: 'Night ' + round, desc: 'Night falls, close your eyes...', actions: [] }
       };
 
@@ -340,7 +348,7 @@
 
       // Show werewolf chat for wolves
       var wc = document.getElementById('werewolfChat');
-      if (playerRole === 'werewolf') {
+      if (playerRole === 'werewolf' || playerRole === 'wolf_king') {
         wc.classList.remove('hidden');
         pollWolfChat();
         if (window.wolfChatInterval) clearInterval(window.wolfChatInterval);
@@ -370,21 +378,36 @@
       document.getElementById('nightConfirmBtn').classList.add('hidden');
       document.getElementById('nightConfirmed').classList.add('hidden');
       selectedTarget = null;
+      selectedMarkTarget = null;
 
       api('/api/players?room_code=' + roomCode).then(function(players) {
         if (!players) return;
         var alive = players.filter(function(p) { return p.alive && p.id !== playerId; });
         var list = document.getElementById('nightTargetList');
         if (!list) return;
-        list.innerHTML = alive.map(function(p) {
-          return '<div class="action-target" data-id="' + p.id + '" onclick="selectNightTarget(this, \'' + p.id + '\')">' + esc(p.name) + ' <span class="selected-indicator hidden">✓</span></div>';
-        }).join('');
+
+        // Wolf King sees two sections
+        if (playerRole === 'wolf_king') {
+          list.innerHTML =
+            '<p style="color:var(--text-secondary);font-size:0.9rem;margin-bottom:8px;">🎯 Choose your kill target</p>' +
+            alive.map(function(p) {
+              return '<div class="action-target" data-id="' + p.id + '" onclick="selectNightTarget(this, ' + p.id + ')">' + esc(p.name) + ' <span class="selected-indicator hidden">✓</span></div>';
+            }).join('') +
+            '<p style="color:var(--text-secondary);font-size:0.9rem;margin:12px 0 8px 0;">👑 Mark a secret target (dies when you die)</p>' +
+            alive.map(function(p) {
+              return '<div class="action-target mark-target" data-id="' + p.id + '" onclick="selectMarkTarget(this, ' + p.id + ')">📌 ' + esc(p.name) + ' <span class="mark-indicator hidden">👑</span></div>';
+            }).join('');
+        } else {
+          list.innerHTML = alive.map(function(p) {
+            return '<div class="action-target" data-id="' + p.id + '" onclick="selectNightTarget(this, ' + p.id + ')">' + esc(p.name) + ' <span class="selected-indicator hidden">✓</span></div>';
+          }).join('');
+        }
       }).catch(function() {});
     }
 
     function selectNightTarget(el, targetId) {
       var indicators = document.querySelectorAll('.selected-indicator');
-      var targets = document.querySelectorAll('.action-target');
+      var targets = document.querySelectorAll('.action-target:not(.mark-target)');
       for (var i = 0; i < targets.length; i++) { targets[i].classList.remove('selected'); }
       for (var j = 0; j < indicators.length; j++) { indicators[j].classList.add('hidden'); }
       el.classList.add('selected');
@@ -393,12 +416,38 @@
       selectedTarget = targetId;
       document.getElementById('nightConfirmBtn').classList.remove('hidden');
     }
+    function selectMarkTarget(el, targetId) {
+      document.querySelectorAll('.mark-target .mark-indicator').forEach(function(e) { e.classList.add('hidden'); });
+      document.querySelectorAll('.mark-target').forEach(function(e) { e.classList.remove('selected'); });
+      el.classList.add('selected');
+      var ind = el.querySelector('.mark-indicator');
+      if (ind) ind.classList.remove('hidden');
+      selectedMarkTarget = targetId;
+      document.getElementById('nightConfirmBtn').classList.remove('hidden');
+    }
 
     function confirmNightAction() {
       if (!selectedTarget) return;
 
-      var actionMap = { werewolf: 'kill', seer: 'investigate', doctor: 'protect' };
+      var actionMap = { werewolf: 'kill', wolf_king: 'kill', seer: 'investigate', doctor: 'protect' };
       var actionType = actionMap[playerRole];
+
+      // Wolf King: send kill + mark
+      if (playerRole === 'wolf_king') {
+        if (!selectedTarget) return;
+        api('/api/night-actions', 'POST', {
+          room_code: roomCode, player_id: playerId, target_id: selectedTarget, action_type: 'kill'
+        }).then(function(data) {
+          if (data && data.success) { /* kill sent */ }
+        }).catch(function() {});
+        if (selectedMarkTarget) {
+          api('/api/night-actions', 'POST', {
+            room_code: roomCode, player_id: playerId, target_id: selectedMarkTarget, action_type: 'mark'
+          }).then(function(data) {
+            if (data && data.success) { /* mark sent */ }
+          }).catch(function() {});
+        }
+      }
 
       api('/api/night-actions', 'POST', {
         room_code: roomCode,
@@ -414,8 +463,8 @@
           // If seer: show investigation result immediately
           if (data.investigation) {
             var inv = data.investigation;
-            var resultText = inv.isWerewolf ? '🐺 IS a Werewolf!' : '✅ NOT a Werewolf';
-            var resultColor = inv.isWerewolf ? 'var(--accent-werewolf)' : 'var(--accent-villager)';
+            var resultText = inv.result || (inv.isGood ? '🤝 Good' : '☠️ Bad');
+            var resultColor = inv.isGood ? 'var(--accent-villager)' : 'var(--accent-werewolf)';
             document.getElementById('nightConfirmed').innerHTML =
               '🔮 You investigated <strong>' + esc(inv.targetName || '?') + '</strong><br>' +
               '<span style="color:' + resultColor + ';font-weight:700;font-size:1.3rem;">' + resultText + '</span><br>' +
