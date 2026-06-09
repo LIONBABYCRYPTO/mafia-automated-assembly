@@ -9,7 +9,6 @@
   <link rel="stylesheet" href="css/style.css">
   <style>
     .host-lobby { text-align: center; padding: 20px; }
-    .player-count-badge { font-size: 3rem; font-weight: 900; color: var(--accent-gold); }
     .setup-panel { max-width: 500px; margin: 0 auto; }
     .config-row { display: flex; gap: 12px; align-items: center; margin: 12px 0; }
     .config-row label { min-width: 140px; color: var(--text-secondary); }
@@ -17,13 +16,13 @@
     .elimination-result { font-size: 2rem; text-align: center; padding: 20px; margin: 16px 0; }
     #qrcodeContainer img, #qrcodeContainer canvas { border: 8px solid white; border-radius: 12px; }
     .reconnect-notice { text-align:center; padding:60px 20px; }
-    .reconnect-notice h1 { font-size:3rem; margin-bottom:16px; }
     .night-summary { font-size:1.3rem; padding:16px; margin:12px 0; border-radius:var(--radius); }
     .player-grid { display:flex; flex-wrap:wrap; gap:8px; justify-content:center; margin:16px 0; }
     .player-grid .alive-dot { width:36px; height:36px; font-size:0.7rem; display:flex; align-items:center; justify-content:center; cursor:default; }
     .vote-tally-wrap { max-width:500px; margin:0 auto; }
     @keyframes flashBorder { 0%,100%{border-color:var(--border)} 50%{border-color:var(--accent-gold)} }
     .waiting-for-actions { animation:flashBorder 1.5s infinite; border:2px solid var(--accent-gold); }
+    .toast { position:fixed; top:20px; left:50%; transform:translateX(-50%); background:var(--accent-werewolf); color:white; padding:12px 24px; border-radius:var(--radius-sm); z-index:999; font-weight:600; }
   </style>
 </head>
 <body>
@@ -56,7 +55,7 @@
         <div class="config-row"><label>Discussion (sec)</label><input type="number" id="discussionDuration" value="180" min="30" max="300"></div>
         <div class="config-row"><label>Vote (sec)</label><input type="number" id="voteDuration" value="60" min="20" max="120"></div>
       </div>
-      <button class="btn btn-success btn-lg" id="startGameBtn" disabled onclick="startGame()">🚀 Start Game</button>
+      <button class="btn btn-success btn-lg" id="startGameBtn" disabled>🚀 Start Game</button>
       <p style="color: var(--text-secondary); font-size: 0.9rem; margin-top: 8px;">Need at least 6 players</p>
     </div>
 
@@ -64,27 +63,20 @@
     <div id="gameView" class="hidden">
       <div id="phaseBanner" class="phase-banner phase-night">🌙 Night Falls</div>
       <div class="timer" id="timerDisplay">--</div>
-
-      <!-- Night: Host waits, shows actions status -->
       <div id="nightHostContent" class="hidden card" style="text-align:center;">
         <p class="waiting-for-actions" style="padding:16px;border-radius:var(--radius);display:inline-block;font-size:1.1rem;">
           ⏳ Waiting for night actions...
         </p>
         <p style="color:var(--text-secondary);font-size:0.9rem;margin-top:8px;">
-          <span id="nightActionCount">0</span> werewolves have voted • 
-          <span id="seerActionCount">0</span>/<span id="seerTotal">0</span> seers investigated • 
-          <span id="docActionCount">0</span>/<span id="docTotal">0</span> doctors protected
+          <span id="nightActionCount">0</span> werewolf votes •
+          <span id="seerActionCount">0</span>/<span id="seerTotal">0</span> investigations •
+          <span id="docActionCount">0</span>/<span id="docTotal">0</span> protections
         </p>
       </div>
-
-      <!-- Day: Vote results will be shown here -->
       <div id="gameContent"></div>
-
-      <!-- Host Controls -->
       <div id="hostControls" class="card" style="text-align:center;display:none;">
         <button class="btn btn-primary btn-lg" id="phaseActionBtn">Continue</button>
       </div>
-
       <div style="text-align:center;margin-top:16px;">
         <p style="color:var(--text-secondary);font-size:0.9rem;">🟢 Alive <span id="aliveCounter">0</span></p>
         <div class="player-grid" id="gamePlayerDots"></div>
@@ -113,18 +105,36 @@
     let currentRound = 0
     let phaseTimer = null
     let hostJWT = null
-    let isHostAuth = false
+    const SUPABASE_URL = window.SUPABASE_URL
+    const SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY
+
+    function getSupabase() {
+      return supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+        realtime: { params: { eventsPerSecond: 10 } }
+      })
+    }
+
+    async function getJWT() {
+      const sb = getSupabase()
+      const { data, error } = await sb.auth.signInAnonymously()
+      if (error) throw new Error('Auth: ' + error.message)
+      return data.session.access_token
+    }
+
+    function getRoomChannel(code) {
+      return getSupabase().channel('room:' + code, {
+        config: { broadcast: { self: true } }
+      })
+    }
 
     // Try to restore from localStorage
     function tryRestore() {
-      const saved = localStorage.getItem('mafia_host_room')
-      if (!saved) return false
       try {
-        const data = JSON.parse(saved)
-        if (data.roomCode && data.roomId && data.jwt) {
-          roomCode = data.roomCode
-          roomId = data.roomId
-          hostJWT = data.jwt
+        const saved = JSON.parse(localStorage.getItem('mafia_host_room') || 'null')
+        if (saved && saved.roomCode && saved.roomId && saved.jwt) {
+          roomCode = saved.roomCode
+          roomId = saved.roomId
+          hostJWT = saved.jwt
           return true
         }
       } catch(e) {}
@@ -133,7 +143,7 @@
 
     function saveState() {
       localStorage.setItem('mafia_host_room', JSON.stringify({
-        roomCode, roomId, jwt: hostJWT
+        roomCode: roomCode, roomId: roomId, jwt: hostJWT
       }))
     }
 
@@ -141,25 +151,28 @@
       localStorage.removeItem('mafia_host_room')
     }
 
+    function showToast(msg) {
+      var t = document.createElement('div')
+      t.className = 'toast'
+      t.textContent = msg
+      document.body.appendChild(t)
+      setTimeout(function() { t.remove() }, 3000)
+    }
+
     async function reconnectRoom() {
-      const code = document.getElementById('reconnectCode').value.trim().toUpperCase()
+      var code = document.getElementById('reconnectCode').value.trim().toUpperCase()
       if (!code || code.length < 4) return
-      
-      const sb = getSupabase()
-      const { data } = await sb.from('rooms').select('*').eq('room_code', code).single()
-      if (!data) {
-        alert('Room not found')
-        return
-      }
-      roomCode = code
-      roomId = data.id
-      await ensureAuth()
+      var sb = getSupabase()
+      var { data } = await sb.from('rooms').select('*').eq('room_code', code).single()
+      if (!data) { alert('Room not found'); return }
+      roomCode = code; roomId = data.id
+      hostJWT = await getJWT()
       saveState()
-      
       document.getElementById('reconnectView').classList.add('hidden')
-      
       if (data.phase === 'lobby' || !data.phase) {
         document.getElementById('lobbyView').classList.remove('hidden')
+        document.getElementById('roomCodeDisplay').textContent = roomCode
+        await generateQR()
         setupListeners()
         await updatePlayerList()
       } else {
@@ -169,28 +182,19 @@
       }
     }
 
-    async function ensureAuth() {
-      if (hostJWT) return
-      const sb = getSupabase()
-      const { data, error } = await sb.auth.signInAnonymously()
-      if (error) throw new Error('Auth failed: ' + error.message)
-      hostJWT = data.session.access_token
-    }
-
     function generateRoomCode() {
-      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
-      let code = ''
-      for (let i = 0; i < 6; i++) code += chars.charAt(Math.floor(Math.random() * chars.length))
+      var chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+      var code = ''
+      for (var i = 0; i < 6; i++) code += chars.charAt(Math.floor(Math.random() * chars.length))
       return code
     }
 
-    window.addEventListener('DOMContentLoaded', async () => {
-      // Try to restore previous session first
+    async function init() {
       if (tryRestore()) {
-        const sb = getSupabase()
-        const { data } = await sb.from('rooms').select('*').eq('room_code', roomCode).single()
+        var sb = getSupabase()
+        var { data } = await sb.from('rooms').select('*').eq('room_code', roomCode).single()
         if (data) {
-          if (data.phase === 'lobby') {
+          if (data.phase === 'lobby' || !data.phase) {
             document.getElementById('lobbyView').classList.remove('hidden')
             document.getElementById('roomCodeDisplay').textContent = roomCode
             await generateQR()
@@ -206,41 +210,38 @@
         }
       }
 
-      // Fresh start
       clearState()
       roomCode = generateRoomCode()
       document.getElementById('roomCodeDisplay').textContent = roomCode
 
       try {
-        await ensureAuth()
+        hostJWT = await getJWT()
       } catch(e) {
         console.error(e)
+        showToast('Auth failed: ' + e.message)
       }
 
-      // Create room
-      const sb = getSupabase()
-      const { data, error } = await sb
+      var sb = getSupabase()
+      var { data, error } = await sb
         .from('rooms')
         .insert({ room_code: roomCode, host_id: 'host', phase: 'lobby' })
         .select()
         .single()
-
-      if (error) {
-        console.error('Failed to create room:', error)
-        return
-      }
+      if (error) { console.error('Failed to create room:', error); showToast('Room error: ' + error.message); return }
       roomId = data.id
       saveState()
       await generateQR()
       setupListeners()
       await updatePlayerList()
-    })
+    }
+
+    document.addEventListener('DOMContentLoaded', init)
 
     async function generateQR() {
-      const playerUrl = `${window.location.origin}${window.location.pathname.replace(/\/[^/]*$/, '/player.html')}?room=${roomCode}`
-      const qrContainer = document.getElementById('qrcodeContainer')
-      qrContainer.innerHTML = ''
-      new QRCode(qrContainer, {
+      var playerUrl = window.location.origin + window.location.pathname.replace(/\/[^/]*$/, '/player.html') + '?room=' + roomCode
+      var container = document.getElementById('qrcodeContainer')
+      container.innerHTML = ''
+      new QRCode(container, {
         text: playerUrl,
         width: 220, height: 220,
         colorDark: '#000000', colorLight: '#ffffff',
@@ -249,106 +250,96 @@
     }
 
     function setupListeners() {
-      // Player list changes
       getSupabase()
-        .channel(`room-players:${roomCode}`)
+        .channel('room-players:' + roomCode)
         .on('postgres_changes',
-          { event: '*', schema: 'public', table: 'players', filter: `room_code=eq.${roomCode}` },
-          () => updatePlayerList()
+          { event: '*', schema: 'public', table: 'players', filter: 'room_code=eq.' + roomCode },
+          function() { updatePlayerList() }
         )
         .subscribe()
 
-      // Broadcast channel
-      const ch = getRoomChannel(roomCode)
-      ch.on('broadcast', { event: 'phase_change' }, (msg) => {
-        if (currentPhase === msg.payload.phase) return
-        // If we missed a phase transition, sync
-        console.log('Broadcast phase_change:', msg.payload)
-      })
-      ch.on('broadcast', { event: 'night_result' }, (msg) => handleNightResult(msg.payload))
-      ch.on('broadcast', { event: 'day_result' }, (msg) => handleDayResult(msg.payload))
-      ch.on('broadcast', { event: 'victory' }, (msg) => handleVictory(msg.payload))
+      var ch = getRoomChannel(roomCode)
+      ch.on('broadcast', { event: 'night_result' }, function(msg) { handleNightResult(msg.payload) })
+      ch.on('broadcast', { event: 'day_result' }, function(msg) { handleDayResult(msg.payload) })
+      ch.on('broadcast', { event: 'victory' }, function(msg) { handleVictory(msg.payload) })
       ch.subscribe()
 
-      // Room state changes (fallback sync)
       getSupabase()
-        .channel(`room-state:${roomCode}`)
+        .channel('room-state:' + roomCode)
         .on('postgres_changes',
-          { event: 'UPDATE', schema: 'public', table: 'rooms', filter: `room_code=eq.${roomCode}` },
-          async (payload) => {
-            const newPhase = payload.new.phase
-            // Don't re-process if we already handled it
-            if (newPhase === currentPhase) return
-            if (currentPhase !== 'lobby' && newPhase === 'night') {
-              // round incremented — day_result already handled the transition
-            }
-          }
+          { event: 'UPDATE', schema: 'public', table: 'rooms', filter: 'room_code=eq.' + roomCode },
+          function() {}
         )
         .subscribe()
 
-      // Night actions status updates
       getSupabase()
-        .channel(`night-actions:${roomCode}`)
+        .channel('night-actions:' + roomCode)
         .on('postgres_changes',
-          { event: '*', schema: 'public', table: 'night_actions', filter: `room_code=eq.${roomCode}` },
-          () => updateNightActionCounts()
+          { event: '*', schema: 'public', table: 'night_actions', filter: 'room_code=eq.' + roomCode },
+          function() { updateNightActionCounts() }
         )
         .subscribe()
+
+      document.getElementById('startGameBtn').onclick = function() { startGame() }
     }
 
     async function updatePlayerList() {
-      const { data: players } = await getSupabase()
+      var sb = getSupabase()
+      var { data: players } = await sb
         .from('players')
         .select('id, name, alive')
         .eq('room_code', roomCode)
         .order('joined_at')
-
       if (!players) return
-      const count = players.length
-      document.getElementById('playerCountDisplay').textContent = count
-      document.getElementById('lobbyPlayerDots').innerHTML = players.map(p =>
-        `<div class="alive-dot ${p.alive ? '' : 'dead'}" title="${p.name}"></div>`
-      ).join('')
-      document.getElementById('startGameBtn').disabled = count < 6
+      document.getElementById('playerCountDisplay').textContent = players.length
+      document.getElementById('lobbyPlayerDots').innerHTML = players.map(function(p) {
+        return '<div class="alive-dot ' + (p.alive ? '' : 'dead') + '" title="' + p.name + '"></div>'
+      }).join('')
+      document.getElementById('startGameBtn').disabled = players.length < 6
     }
 
-    // ==========================================
-    // NIGHT ACTION COUNT STATUS
-    // ==========================================
     async function updateNightActionCounts() {
-      const { data: actions } = await getSupabase()
+      var sb = getSupabase()
+      var { data: actions } = await sb
         .from('night_actions')
         .select('player_id, action_type')
         .eq('room_code', roomCode)
         .eq('round', currentRound)
-
-      const kills = (actions || []).filter(a => a.action_type === 'kill').length
-      const invs = (actions || []).filter(a => a.action_type === 'investigate').length
-      const docs = (actions || []).filter(a => a.action_type === 'protect').length
-
+      var kills = (actions || []).filter(function(a) { return a.action_type === 'kill' }).length
+      var invs = (actions || []).filter(function(a) { return a.action_type === 'investigate' }).length
+      var docs = (actions || []).filter(function(a) { return a.action_type === 'protect' }).length
       document.getElementById('nightActionCount').textContent = kills
       document.getElementById('seerActionCount').textContent = invs
       document.getElementById('docActionCount').textContent = docs
     }
 
     // ==========================================
-    // GAME FLOW
+    // START GAME
     // ==========================================
     async function startGame() {
-      if (!hostJWT) await ensureAuth()
+      if (!hostJWT) {
+        try { hostJWT = await getJWT() } catch(e) { alert('Auth failed: ' + e.message); return }
+      }
+      if (!roomCode) { alert('No room code'); return }
 
       document.getElementById('lobbyView').classList.add('hidden')
-      document.getElementById('gameView').classList.remove('hidden')
+      showToast('🚀 Assigning roles...')
 
       try {
-        const result = await callEdgeFunction('assign-roles', { room_code: roomCode }, hostJWT)
-        if (result.success) {
+        var result = await fetch(SUPABASE_URL + '/functions/v1/assign-roles', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + hostJWT },
+          body: JSON.stringify({ room_code: roomCode })
+        })
+        var data = await result.json()
+        if (!result.ok) throw new Error(data.error || 'HTTP ' + result.status)
+        if (data.success) {
           currentPhase = 'night'
           currentRound = 1
           startNightPhase()
         }
-      } catch (err) {
-        alert('Error starting game: ' + err.message)
+      } catch(err) {
+        alert('Error: ' + err.message)
         document.getElementById('lobbyView').classList.remove('hidden')
         document.getElementById('gameView').classList.add('hidden')
       }
@@ -358,29 +349,25 @@
       clearInterval(phaseTimer)
       document.getElementById('hostControls').style.display = 'block'
       document.getElementById('hostControls').querySelector('#phaseActionBtn').textContent = '⏰ End Night Phase'
-      document.getElementById('hostControls').querySelector('#phaseActionBtn').onclick = () => processNight()
-
+      document.getElementById('hostControls').querySelector('#phaseActionBtn').onclick = function() { processNight() }
       document.getElementById('nightHostContent').classList.remove('hidden')
       document.getElementById('gameContent').innerHTML = ''
-
-      const banner = document.getElementById('phaseBanner')
+      var banner = document.getElementById('phaseBanner')
       banner.className = 'phase-banner phase-night'
-      banner.textContent = `🌙 Night ${currentRound}`
-
+      banner.textContent = '🌙 Night ' + currentRound
       startTimer(parseInt(document.getElementById('nightDuration').value) || 60)
       updateNightActionCounts()
       updateAliveDots()
     }
 
-    // Timer
     function startTimer(seconds) {
       clearInterval(phaseTimer)
-      const display = document.getElementById('timerDisplay')
-      let remaining = seconds
-      const update = () => {
-        const mins = Math.floor(remaining / 60)
-        const secs = remaining % 60
-        display.textContent = `${mins}:${secs.toString().padStart(2, '0')}`
+      var display = document.getElementById('timerDisplay')
+      var remaining = seconds
+      function update() {
+        var mins = Math.floor(remaining / 60)
+        var secs = remaining % 60
+        display.textContent = mins + ':' + (secs < 10 ? '0' : '') + secs
         if (remaining <= 10) display.className = 'timer urgent'
         else if (remaining <= 20) display.className = 'timer warning'
         else display.className = 'timer'
@@ -397,25 +384,21 @@
       else if (currentPhase === 'day_vote') processDay()
     }
 
-    // ==========================================
-    // EDGE FUNCTION CALLS
-    // ==========================================
     async function processNight() {
       clearInterval(phaseTimer)
       document.getElementById('timerDisplay').textContent = '--'
       document.getElementById('hostControls').style.display = 'none'
       document.getElementById('nightHostContent').innerHTML = '<p style="color:var(--text-secondary);padding:20px;">⚡ Resolving night actions...</p>'
-
       try {
-        const result = await callEdgeFunction('process-night', { room_code: roomCode }, hostJWT)
-        handleNightResult({
-          killedPlayer: result.killedPlayer,
-          saved: result.saved,
-          winner: result.winner,
-          round: currentRound,
-          seerResults: result.seerResults
+        var result = await fetch(SUPABASE_URL + '/functions/v1/process-night', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + hostJWT },
+          body: JSON.stringify({ room_code: roomCode })
         })
-      } catch (err) {
+        var data = await result.json()
+        if (!result.ok) throw new Error(data.error || 'HTTP ' + result.status)
+        handleNightResult(data)
+      } catch(err) {
         alert('Night error: ' + err.message)
         startNightPhase()
       }
@@ -426,21 +409,22 @@
       document.getElementById('timerDisplay').textContent = '--'
       document.getElementById('hostControls').style.display = 'none'
       document.getElementById('gameContent').innerHTML = '<p style="color:var(--text-secondary);text-align:center;">⚡ Tallying votes...</p>'
-
       try {
-        const result = await callEdgeFunction('process-day', { room_code: roomCode }, hostJWT)
-        if (result.winner) {
-          handleVictory({ winner: result.winner, eliminatedPlayer: result.eliminatedPlayer })
+        var result = await fetch(SUPABASE_URL + '/functions/v1/process-day', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + hostJWT },
+          body: JSON.stringify({ room_code: roomCode })
+        })
+        var data = await result.json()
+        if (!result.ok) throw new Error(data.error || 'HTTP ' + result.status)
+        if (data.winner) {
+          handleVictory({ winner: data.winner, eliminatedPlayer: data.eliminatedPlayer })
         } else {
-          handleDayResult({
-            eliminatedPlayer: result.eliminatedPlayer,
-            voteTally: result.voteTally,
-            round: currentRound
-          })
+          handleDayResult({ eliminatedPlayer: data.eliminatedPlayer, voteTally: data.voteTally, round: currentRound })
         }
-      } catch (err) {
+      } catch(err) {
         alert('Day error: ' + err.message)
-        document.getElementById('gameContent').innerHTML = `<p style="color:var(--danger);text-align:center;">Error: ${err.message}</p>`
+        document.getElementById('gameContent').innerHTML = '<p style="color:var(--danger);text-align:center;">Error: ' + err.message + '</p>'
       }
     }
 
@@ -448,18 +432,13 @@
       clearInterval(phaseTimer)
       document.getElementById('timerDisplay').textContent = '--'
       currentPhase = 'day_vote'
-
-      const banner = document.getElementById('phaseBanner')
-      banner.className = 'phase-banner phase-vote'
-      banner.textContent = `🗳️ Vote — Round ${currentRound}`
-
+      document.getElementById('phaseBanner').className = 'phase-banner phase-vote'
+      document.getElementById('phaseBanner').textContent = '🗳️ Vote — Round ' + currentRound
       document.getElementById('hostControls').style.display = 'block'
       document.getElementById('hostControls').querySelector('#phaseActionBtn').textContent = '📊 End Vote & Tally'
-      document.getElementById('hostControls').querySelector('#phaseActionBtn').onclick = () => processDay()
-
+      document.getElementById('hostControls').querySelector('#phaseActionBtn').onclick = function() { processDay() }
       document.getElementById('nightHostContent').classList.add('hidden')
       document.getElementById('gameContent').innerHTML = '<p style="color:var(--text-secondary);text-align:center;">🗳️ Players are voting now...</p>'
-
       startTimer(parseInt(document.getElementById('voteDuration').value) || 60)
     }
 
@@ -467,120 +446,71 @@
     // BROADCAST HANDLERS
     // ==========================================
     function handleNightResult(payload) {
-      const content = document.getElementById('gameContent')
       document.getElementById('nightHostContent').classList.add('hidden')
       document.getElementById('hostControls').style.display = 'block'
-      const round = payload.round
-
-      let html = `<div class="card fade-in"><h2>🌙 Night ${round} Results</h2>`
+      var round = payload.round || currentRound
+      var html = '<div class="card fade-in"><h2>🌙 Night ' + round + ' Results</h2>'
       if (payload.killedPlayer) {
-        html += `<div class="night-summary" style="background:rgba(231,76,60,0.15);border:2px solid var(--accent-werewolf);">
-          ☠️ <strong>${payload.killedPlayer.name}</strong> was attacked during the night!
-        </div>`
+        html += '<div class="night-summary" style="background:rgba(231,76,60,0.15);border:2px solid var(--accent-werewolf);">☠️ <strong>' + payload.killedPlayer.name + '</strong> was attacked!</div>'
       } else if (payload.saved) {
-        html += `<div class="night-summary" style="background:rgba(255,107,157,0.15);border:2px solid var(--accent-doctor);">
-          💉 The Doctor saved someone! A brave player survived the night.
-        </div>`
+        html += '<div class="night-summary" style="background:rgba(255,107,157,0.15);border:2px solid var(--accent-doctor);">💉 The Doctor saved someone!</div>'
       } else {
-        html += `<div class="night-summary" style="color:var(--text-secondary);border:1px solid var(--border);">
-          🌅 The night passed peacefully. No one was attacked.
-        </div>`
+        html += '<div class="night-summary" style="color:var(--text-secondary);border:1px solid var(--border);">🌅 The night passed peacefully.</div>'
       }
       html += '</div>'
-      content.innerHTML = html
+      document.getElementById('gameContent').innerHTML = html
       updateAliveDots()
 
-      // If winner, handle victory
-      if (payload.winner) {
-        handleVictory({ winner: payload.winner })
-        return
-      }
+      if (payload.winner) { handleVictory({ winner: payload.winner }); return }
 
-      // Transition to day discussion
       currentPhase = 'day_discussion'
       document.getElementById('hostControls').querySelector('#phaseActionBtn').textContent = '🗳️ Start Voting'
-      document.getElementById('hostControls').querySelector('#phaseActionBtn').onclick = () => startVotePhase()
-
-      const banner = document.getElementById('phaseBanner')
-      banner.className = 'phase-banner phase-day'
-      banner.textContent = `☀️ Day ${round} — Discuss!`
-
+      document.getElementById('hostControls').querySelector('#phaseActionBtn').onclick = function() { startVotePhase() }
+      document.getElementById('phaseBanner').className = 'phase-banner phase-day'
+      document.getElementById('phaseBanner').textContent = '☀️ Day ' + round + ' — Discuss!'
       startTimer(parseInt(document.getElementById('discussionDuration').value) || 180)
     }
 
     function handleDayResult(payload) {
-      const content = document.getElementById('gameContent')
-      const eliminated = payload.eliminatedPlayer
-      const tally = payload.voteTally
+      var eliminated = payload.eliminatedPlayer
+      var tally = payload.voteTally
+      var html = '<div class="card fade-in"><h2>☀️ Day ' + (payload.round || currentRound) + ' Results</h2>'
 
-      let html = `<div class="card fade-in"><h2>☀️ Day ${payload.round} Results</h2>`
-
-      // Vote tally
       if (tally && Object.keys(tally).length > 0) {
-        html += '<div class="vote-tally-wrap">'
-        // We need player names - fetch them
-        setTimeout(async () => {
-          const { data: players } = await getSupabase()
-            .from('players')
-            .select('id, name')
-            .eq('room_code', roomCode)
-          const nameMap = {}
-          if (players) players.forEach(p => nameMap[p.id] = p.name)
-          const tallyDiv = document.getElementById('voteTallyDisplay')
+        html += '<div class="vote-tally-wrap"><div id="voteTallyDisplay"></div></div>'
+        setTimeout(async function() {
+          var sb = getSupabase()
+          var { data: players } = await sb.from('players').select('id, name').eq('room_code', roomCode)
+          var nameMap = {}
+          if (players) players.forEach(function(p) { nameMap[p.id] = p.name })
+          var tallyDiv = document.getElementById('voteTallyDisplay')
           if (tallyDiv) {
-            const maxVotes = Math.max(...Object.values(tally), 1)
-            tallyDiv.innerHTML = Object.entries(tally)
-              .sort((a, b) => b[1] - a[1])
-              .map(([id, count]) => `
-                <div class="vote-bar-container">
-                  <div class="vote-bar-label">
-                    <span>${nameMap[id] || 'Player #' + id}</span>
-                    <span>${count} vote${count > 1 ? 's' : ''}</span>
-                  </div>
-                  <div class="vote-bar">
-                    <div class="vote-bar-fill" style="width:${(count/maxVotes)*100}%"></div>
-                  </div>
-                </div>
-              `).join('')
+            var maxVotes = Math.max.apply(null, Object.values(tally)) || 1
+            tallyDiv.innerHTML = Object.keys(tally).sort(function(a, b) { return tally[b] - tally[a] }).map(function(id) {
+              return '<div class="vote-bar-container"><div class="vote-bar-label"><span>' + (nameMap[id] || '#' + id) + '</span><span>' + tally[id] + ' vote' + (tally[id] > 1 ? 's' : '') + '</span></div><div class="vote-bar"><div class="vote-bar-fill" style="width:' + (tally[id]/maxVotes*100) + '%"></div></div></div>'
+            }).join('')
           }
         }, 50)
-        html += '<div id="voteTallyDisplay"></div></div>'
       }
 
       if (eliminated) {
-        const roleName = eliminated.role.charAt(0).toUpperCase() + eliminated.role.slice(1)
-        html += `<div class="phase-banner phase-result elimination-flash fade-in" style="margin-top:16px;">
-          ⚖️ <strong>${eliminated.name}</strong> was eliminated!<br>
-          <span style="font-size:1.4rem;margin-top:8px;display:block;">
-            Role: <strong>${roleName}</strong>
-          </span>
-        </div>`
-      } else if (tally && Object.keys(tally).length > 0) {
-        html += `<div class="elimination-result" style="color:var(--accent-gold);">
-          ⚖️ No one was eliminated (tie).
-        </div>`
+        html += '<div class="phase-banner phase-result elimination-flash fade-in" style="margin-top:16px;">⚖️ <strong>' + eliminated.name + '</strong> eliminated!<br><span style="font-size:1.4rem;margin-top:8px;display:block;">Role: <strong>' + eliminated.role.charAt(0).toUpperCase() + eliminated.role.slice(1) + '</strong></span></div>'
       } else {
-        html += `<div class="elimination-result" style="color:var(--accent-gold);">
-          ⚖️ No votes were cast. Moving on...
-        </div>`
+        html += '<div class="elimination-result" style="color:var(--accent-gold);">⚖️ No one was eliminated.</div>'
       }
-
       html += '</div>'
-      content.innerHTML = html
+      document.getElementById('gameContent').innerHTML = html
       updateAliveDots()
 
-      // Show continue button
       currentPhase = 'day_results'
       document.getElementById('hostControls').style.display = 'block'
       document.getElementById('hostControls').querySelector('#phaseActionBtn').textContent = '🌙 Continue to Night'
-      document.getElementById('hostControls').querySelector('#phaseActionBtn').onclick = () => continueToNight()
-
-      const banner = document.getElementById('phaseBanner')
-      banner.className = 'phase-banner phase-result'
-      banner.textContent = `⚖️ Verdict — Round ${payload.round}`
+      document.getElementById('hostControls').querySelector('#phaseActionBtn').onclick = function() { continueNight() }
+      document.getElementById('phaseBanner').className = 'phase-banner phase-result'
+      document.getElementById('phaseBanner').textContent = '⚖️ Verdict'
     }
 
-    function continueToNight() {
+    function continueNight() {
       currentRound++
       currentPhase = 'night'
       startNightPhase()
@@ -592,83 +522,60 @@
       document.getElementById('victoryView').classList.remove('hidden')
       document.getElementById('hostControls').style.display = 'none'
       clearState()
-
-      const emoji = document.getElementById('victoryEmoji')
-      const title = document.getElementById('victoryTitle')
-      const subtitle = document.getElementById('victorySubtitle')
-
-      if (payload.winner === 'werewolf') {
-        emoji.textContent = '🐺'
-        title.textContent = 'Werewolves Win!'
-        title.style.color = 'var(--accent-werewolf)'
-        subtitle.textContent = 'The werewolves have taken over the village!'
-      } else {
-        emoji.textContent = '🏘️'
-        title.textContent = 'Village Wins!'
-        title.style.color = 'var(--accent-villager)'
-        subtitle.textContent = 'The villagers have rooted out all werewolves!'
-      }
+      document.getElementById('victoryEmoji').textContent = payload.winner === 'werewolf' ? '🐺' : '🏘️'
+      document.getElementById('victoryTitle').textContent = payload.winner === 'werewolf' ? 'Werewolves Win!' : 'Village Wins!'
+      document.getElementById('victoryTitle').style.color = payload.winner === 'werewolf' ? 'var(--accent-werewolf)' : 'var(--accent-villager)'
+      document.getElementById('victorySubtitle').textContent = payload.winner === 'werewolf' ? 'The werewolves have taken over the village!' : 'The villagers have rooted out all werewolves!'
       if (payload.eliminatedPlayer) {
-        subtitle.textContent += ` ${payload.eliminatedPlayer.name} was the last elimination.`
+        document.getElementById('victorySubtitle').textContent += ' ' + payload.eliminatedPlayer.name + ' was the last elimination.'
       }
     }
 
     async function updateAliveDots() {
-      const { data: players } = await getSupabase()
-        .from('players')
-        .select('id, name, alive')
-        .eq('room_code', roomCode)
-        .order('joined_at')
-
+      var sb = getSupabase()
+      var { data: players } = await sb.from('players').select('id, name, alive').eq('room_code', roomCode).order('joined_at')
       if (!players) return
-      const alive = players.filter(p => p.alive)
+      var alive = players.filter(function(p) { return p.alive })
       document.getElementById('aliveCounter').textContent = alive.length
-      document.getElementById('gamePlayerDots').innerHTML = players.map(p =>
-        `<div class="alive-dot ${p.alive ? '' : 'dead'}" title="${p.name}">${p.alive ? '' : '💀'}</div>`
-      ).join('')
+      document.getElementById('gamePlayerDots').innerHTML = players.map(function(p) {
+        return '<div class="alive-dot ' + (p.alive ? '' : 'dead') + '" title="' + p.name + '">' + (p.alive ? '' : '💀') + '</div>'
+      }).join('')
     }
 
-    // Sync to existing game state (after reconnect)
     async function syncToGameState(room) {
       currentPhase = room.phase
       currentRound = room.round || 1
       updateAliveDots()
-
+      document.getElementById('gameView').classList.remove('hidden')
+      document.getElementById('nightHostContent').classList.add('hidden')
       switch (room.phase) {
-        case 'night':
-          startNightPhase()
-          break
+        case 'night': startNightPhase(); break
         case 'day_discussion':
-          document.getElementById('nightHostContent').classList.add('hidden')
-          document.getElementById('gameContent').innerHTML = '<div class="card fade-in"><h2>☀️ Day Discussion</h2><p style="color:var(--text-secondary);">Discussion is in progress. Players are talking!</p></div>'
+          document.getElementById('gameContent').innerHTML = '<div class="card fade-in"><h2>☀️ Day Discussion</h2><p style="color:var(--text-secondary);">Discussion in progress.</p></div>'
           document.getElementById('hostControls').style.display = 'block'
           document.getElementById('hostControls').querySelector('#phaseActionBtn').textContent = '🗳️ Start Voting'
-          document.getElementById('hostControls').querySelector('#phaseActionBtn').onclick = () => startVotePhase()
+          document.getElementById('hostControls').querySelector('#phaseActionBtn').onclick = function() { startVotePhase() }
           document.getElementById('phaseBanner').className = 'phase-banner phase-day'
-          document.getElementById('phaseBanner').textContent = `☀️ Day ${currentRound} — Discuss!`
+          document.getElementById('phaseBanner').textContent = '☀️ Day ' + currentRound
           break
         case 'day_vote':
-          document.getElementById('nightHostContent').classList.add('hidden')
-          document.getElementById('gameContent').innerHTML = '<p style="color:var(--text-secondary);text-align:center;">🗳️ Voting is in progress...</p>'
+          document.getElementById('gameContent').innerHTML = '<p style="color:var(--text-secondary);text-align:center;">🗳️ Voting in progress...</p>'
           document.getElementById('hostControls').style.display = 'block'
           document.getElementById('hostControls').querySelector('#phaseActionBtn').textContent = '📊 End Vote & Tally'
-          document.getElementById('hostControls').querySelector('#phaseActionBtn').onclick = () => processDay()
+          document.getElementById('hostControls').querySelector('#phaseActionBtn').onclick = function() { processDay() }
           document.getElementById('phaseBanner').className = 'phase-banner phase-vote'
-          document.getElementById('phaseBanner').textContent = `🗳️ Vote — Round ${currentRound}`
+          document.getElementById('phaseBanner').textContent = '🗳️ Vote — Round ' + currentRound
           break
         case 'day_results':
-          document.getElementById('nightHostContent').classList.add('hidden')
-          document.getElementById('gameContent').innerHTML = '<p style="color:var(--text-secondary);text-align:center;">⚖️ Day results have been posted.</p>'
+          document.getElementById('gameContent').innerHTML = '<p style="color:var(--text-secondary);text-align:center;">⚖️ Results posted.</p>'
           document.getElementById('hostControls').style.display = 'block'
           document.getElementById('hostControls').querySelector('#phaseActionBtn').textContent = '🌙 Continue to Night'
-          document.getElementById('hostControls').querySelector('#phaseActionBtn').onclick = () => continueToNight()
-          document.getElementById('phaseBanner').className = 'phase-banner phase-result'
-          document.getElementById('phaseBanner').textContent = `⚖️ Day Results`
+          document.getElementById('hostControls').querySelector('#phaseActionBtn').onclick = function() { continueNight() }
           break
         case 'victory':
           document.getElementById('gameView').classList.add('hidden')
           document.getElementById('victoryView').classList.remove('hidden')
-          document.getElementById('victoryEmoji').textContent = room.winner === 'werewolf' ? '🐺' : '🏘️'
+          document.getElementById('victoryEmoji').textContent = '🏆'
           document.getElementById('victoryTitle').textContent = room.winner === 'werewolf' ? 'Werewolves Win!' : 'Village Wins!'
           break
       }
