@@ -342,6 +342,8 @@
       document.getElementById('nightHostContent').classList.add('hidden');
       document.getElementById('gameContent').innerHTML = '<p style="color:var(--text-secondary);text-align:center;">🗳️ Players are voting now...</p>';
       startTimer(parseInt(document.getElementById('voteDuration').value) || 60);
+      // Update phase in backend so players see voting
+      api('/api/update-phase', 'POST', { room_code: roomCode, phase: 'day_voting' }).catch(function() {});
     }
 
     // ── HANDLERS ──
@@ -413,7 +415,9 @@
     function continueNight() {
       currentRound++;
       currentPhase = 'night';
-      startNightPhase();
+      api('/api/continue-to-night', 'POST', { room_code: roomCode }).then(function() {
+        startNightPhase();
+      }).catch(function() { startNightPhase(); });
     }
 
     function handleVictory(payload) {
@@ -464,6 +468,7 @@
           document.getElementById('phaseBanner').className = 'phase-banner phase-day';
           document.getElementById('phaseBanner').textContent = '☀️ Day ' + currentRound;
           break;
+        case 'day_voting':
         case 'day_vote':
           document.getElementById('gameContent').innerHTML = '<p style="color:var(--text-secondary);text-align:center;">🗳️ Voting in progress...</p>';
           document.getElementById('hostControls').style.display = 'block';

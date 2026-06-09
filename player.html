@@ -207,6 +207,7 @@
           switch (room.phase) {
             case 'night': showNightPhase(room.round); break;
             case 'day_discussion': showDayDiscussion(); break;
+            case 'day_voting':
             case 'day_vote': showVotePhase(); break;
           }
           currentRound = room.round || 1;
@@ -218,7 +219,10 @@
             if (!players) return;
             var me = players.find(function(p) { return p.id === playerId; });
             if (me && !me.alive && room.phase !== 'victory') {
-              showEliminated();
+              // Only show eliminated once (skip if already showing)
+              if (document.getElementById('resultScreen').classList.contains('hidden')) {
+                showEliminated();
+              }
             }
           }).catch(function() {});
         }
@@ -335,6 +339,18 @@
           nightActionSubmitted = true;
           document.getElementById('nightConfirmBtn').classList.add('hidden');
           document.getElementById('nightConfirmed').classList.remove('hidden');
+
+          // If seer: show investigation result immediately
+          if (data.investigation) {
+            var resultText = data.investigation.isWerewolf ? '🐺 IS a Werewolf!' : '✅ NOT a Werewolf';
+            var resultColor = data.investigation.isWerewolf ? 'var(--accent-werewolf)' : 'var(--accent-villager)';
+            document.getElementById('nightConfirmed').innerHTML =
+              '🔮 Investigation result: <span style=\"color:' + resultColor + ';font-weight:700;font-size:1.3rem;\">' + resultText + '</span><br>' +
+              '<span style=\"color:var(--text-secondary);font-size:0.9rem;\">Waiting for host to end night...</span>';
+          } else {
+            document.getElementById('nightConfirmed').textContent = '✅ Action submitted, waiting for host...';
+          }
+
           var targets = document.querySelectorAll('.action-target');
           for (var i = 0; i < targets.length; i++) {
             targets[i].style.opacity = '0.5';
@@ -357,8 +373,15 @@
 
       api('/api/rooms/' + roomCode).then(function(room) {
         if (!room) return;
-        var killed = room.last_killed || '';
-        document.getElementById('nightResult').textContent = killed ? '☠️ ' + killed + ' was attacked last night!' : '🌅 The night passed peacefully.';
+        var killed = room.lastKilledName || room.last_killed || '';
+        var saved = room.lastDoctorSaved || false;
+        if (killed) {
+          document.getElementById('nightResult').textContent = '☠️ ' + killed + ' was attacked last night!';
+        } else if (saved) {
+          document.getElementById('nightResult').textContent = '💉 The Doctor saved someone last night!';
+        } else {
+          document.getElementById('nightResult').textContent = '🌅 The night passed peacefully.';
+        }
       }).catch(function() {});
     }
 
