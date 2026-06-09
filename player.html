@@ -120,6 +120,9 @@
     var currentRound = 1;
     var selectedTarget = null;
     var pollInterval = null;
+    var lastPhase = null;
+    var nightActionSubmitted = false;
+    var voteSubmitted = false;
 
     function esc(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 
@@ -175,6 +178,8 @@
         // Update waiting count while in lobby
         if (room.phase === 'lobby') {
           document.getElementById('waitingCount').textContent = room.playerCount || 0;
+          lastPhase = 'lobby';
+          return;
         }
 
         if (room.phase === 'victory') {
@@ -182,30 +187,32 @@
           return;
         }
 
+        // Fetch role once when game starts
         if (!playerRole && room.phase !== 'lobby') {
           fetchRole();
+          lastPhase = room.phase;
           return;
         }
 
-        if (playerRole) {
+        // Only switch UI when phase actually changes
+        if (playerRole && room.phase !== lastPhase) {
+          lastPhase = room.phase;
+          nightActionSubmitted = false;
+          voteSubmitted = false;
+
+          document.getElementById('nightScreen').classList.add('hidden');
+          document.getElementById('dayScreen').classList.add('hidden');
+          document.getElementById('resultScreen').classList.add('hidden');
+
           switch (room.phase) {
-            case 'night':
-              showNightPhase(room.round);
-              break;
-            case 'day_discussion':
-              showDayDiscussion();
-              break;
-            case 'day_vote':
-              showVotePhase();
-              break;
-            case 'day_results':
-              // handled by dayResults
-              break;
+            case 'night': showNightPhase(room.round); break;
+            case 'day_discussion': showDayDiscussion(); break;
+            case 'day_vote': showVotePhase(); break;
           }
           currentRound = room.round || 1;
         }
 
-        // check if player is dead
+        // Check if player is dead
         if (playerId) {
           api('/api/players?room_code=' + roomCode).then(function(players) {
             if (!players) return;
@@ -269,10 +276,18 @@
       if (config.actions.length === 0) {
         document.getElementById('nightActionArea').innerHTML = '<p style="font-size:3rem;margin:30px 0;">💤</p>';
         document.getElementById('nightConfirmBtn').classList.add('hidden');
+        document.getElementById('nightConfirmed').classList.add('hidden');
         return;
       }
 
-      // Show alive players to target
+      // If action already submitted, show confirmed state
+      if (nightActionSubmitted) {
+        document.getElementById('nightConfirmBtn').classList.add('hidden');
+        document.getElementById('nightConfirmed').classList.remove('hidden');
+        return;
+      }
+
+      // Populate action list
       var area = document.getElementById('nightActionArea');
       area.innerHTML = '<div class="action-list" id="nightTargetList"></div>';
       document.getElementById('nightConfirmBtn').classList.add('hidden');
@@ -291,9 +306,13 @@
     }
 
     function selectNightTarget(el, targetId) {
-      document.querySelectorAll('.action-target').forEach(function(e) { e.classList.remove('selected'); e.querySelector('.selected-indicator').classList.add('hidden'); });
+      var indicators = document.querySelectorAll('.selected-indicator');
+      var targets = document.querySelectorAll('.action-target');
+      for (var i = 0; i < targets.length; i++) { targets[i].classList.remove('selected'); }
+      for (var j = 0; j < indicators.length; j++) { indicators[j].classList.add('hidden'); }
       el.classList.add('selected');
-      el.querySelector('.selected-indicator').classList.remove('hidden');
+      var ind = el.querySelector('.selected-indicator');
+      if (ind) ind.classList.remove('hidden');
       selectedTarget = targetId;
       document.getElementById('nightConfirmBtn').classList.remove('hidden');
     }
@@ -311,9 +330,15 @@
         action_type: actionType
       }).then(function(data) {
         if (data && data.success) {
+          nightActionSubmitted = true;
           document.getElementById('nightConfirmBtn').classList.add('hidden');
           document.getElementById('nightConfirmed').classList.remove('hidden');
-          document.querySelectorAll('.action-target').forEach(function(e) { e.style.opacity = '0.5'; e.style.cursor = 'default'; e.onclick = null; });
+          var targets = document.querySelectorAll('.action-target');
+          for (var i = 0; i < targets.length; i++) {
+            targets[i].style.opacity = '0.5';
+            targets[i].style.cursor = 'default';
+            targets[i].onclick = null;
+          }
         }
       }).catch(function(err) {
         alert('Error: ' + err.message);
@@ -339,6 +364,13 @@
       document.getElementById('dayScreen').classList.remove('hidden');
       document.getElementById('discussionPhase').classList.add('hidden');
       document.getElementById('votePhase').classList.remove('hidden');
+
+      if (voteSubmitted) {
+        document.getElementById('votedConfirmed').classList.remove('hidden');
+        document.getElementById('voteConfirmBtn').classList.add('hidden');
+        return;
+      }
+
       document.getElementById('votedConfirmed').classList.add('hidden');
       document.getElementById('voteConfirmBtn').classList.add('hidden');
       selectedTarget = null;
@@ -370,9 +402,11 @@
         target_id: selectedTarget
       }).then(function(data) {
         if (data && data.success) {
+          voteSubmitted = true;
           document.getElementById('voteConfirmBtn').classList.add('hidden');
           document.getElementById('votedConfirmed').classList.remove('hidden');
-          document.querySelectorAll('.vote-target').forEach(function(e) { e.classList.add('voted'); e.onclick = null; });
+          var targets = document.querySelectorAll('.vote-target');
+          for (var i = 0; i < targets.length; i++) { targets[i].classList.add('voted'); targets[i].onclick = null; }
         }
       }).catch(function() {});
     }
@@ -388,7 +422,8 @@
     // ── VICTORY ──
     function showVictory(winner) {
       if (pollInterval) clearInterval(pollInterval);
-      document.querySelectorAll('.player-view > div').forEach(function(d) { d.classList.add('hidden'); });
+      var divs = document.querySelectorAll('.player-view > div');
+      for (var i = 0; i < divs.length; i++) { divs[i].classList.add('hidden'); }
       document.getElementById('victoryScreen').classList.remove('hidden');
       document.getElementById('playerVictoryEmoji').textContent = winner === 'werewolf' ? '🐺' : '🏘️';
       document.getElementById('playerVictoryTitle').textContent = winner === 'werewolf' ? 'Werewolves Win!' : 'Village Wins!';
