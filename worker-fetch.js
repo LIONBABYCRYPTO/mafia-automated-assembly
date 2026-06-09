@@ -171,7 +171,7 @@ async function handleRequest(request) {
         const count = state.players.length;
         if (count < 6) return json({ error: `Need at least 6 players, got ${count}` }, 400, origin);
 
-        let numWolves = state.customWolfCount || Math.floor(count / 4);
+        let numWolves = body.wolf_count || state.customWolfCount || Math.floor(count / 4);
         if (numWolves < 1) numWolves = 1;
         if (numWolves > Math.floor(count / 2)) numWolves = Math.floor(count / 2);
 
