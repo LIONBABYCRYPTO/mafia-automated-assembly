@@ -105,6 +105,18 @@ create policy "Service role manages night actions"
   using (true)
   with check (true);
 
+-- Players can insert their own night actions
+create policy "Players can submit night actions"
+  on night_actions for insert
+  with check (
+    auth.uid()::text = (select user_id from players where id = player_id)
+  );
+
+-- Anyone can read night actions (for realtime status display)
+create policy "Anyone can read night actions"
+  on night_actions for select
+  using (true);
+
 -- 5. DAY VOTES
 create table day_votes (
   id bigint generated always as identity primary key,
@@ -124,10 +136,15 @@ create policy "Anyone can read votes tally"
 
 create policy "Players can vote"
   on day_votes for insert
-  with check (true);
+  with check (
+    auth.uid()::text = (select user_id from players where id = voter_id)
+  );
 
--- 6. REALTIME: enable broadcast on rooms
+-- 6. REALTIME: enable realtime for all game tables
 alter publication supabase_realtime add table rooms;
+alter publication supabase_realtime add table players;
+alter publication supabase_realtime add table night_actions;
+alter publication supabase_realtime add table day_votes;
 
 -- 7. HELPER: Cleanup old rooms
 -- Run via cron: delete rooms older than 24h
