@@ -7,97 +7,62 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <link rel="stylesheet" href="css/style.css">
   <style>
-    /* Phone-optimized: big touch targets, minimal UI */
-    body { padding: 0; }
+    /* Phone-optimized */
+    body { padding: 0; margin:0; }
     .player-view { padding: 16px; max-width: 480px; margin: 0 auto; }
+
     .join-screen { text-align: center; padding-top: 60px; }
     .join-screen h1 { font-size: 2rem; margin-bottom: 24px; }
     .name-input { font-size: 1.3rem; padding: 16px; text-align: center; }
     .join-btn { font-size: 1.3rem; padding: 18px; margin-top: 8px; }
 
-    .role-card {
-      text-align: center;
-      padding: 40px 20px;
-      border-radius: var(--radius);
-      margin: 20px 0;
-      border: 3px solid;
-      animation: roleReveal 0.8s ease forwards;
-    }
+    .role-card { text-align:center; padding:40px 20px; border-radius:var(--radius); margin:20px 0; border:3px solid; animation:roleReveal 0.8s ease forwards; }
+    .role-emoji { font-size: 5rem; display:block; margin-bottom:16px; }
+    .role-desc { font-size:1rem; color:var(--text-secondary); margin-top:8px; line-height:1.5; }
 
-    .role-emoji { font-size: 5rem; display: block; margin-bottom: 16px; }
-    .role-desc { font-size: 1rem; color: var(--text-secondary); margin-top: 8px; line-height: 1.5; }
+    .night-screen { text-align:center; padding:40px 20px; }
+    .night-screen .moon { font-size:4rem; display:block; margin-bottom:16px; }
+    .night-screen .instruction { font-size:1.1rem; margin:16px 0; line-height:1.5; }
 
-    .night-screen {
-      text-align: center;
-      padding: 40px 20px;
-    }
+    .action-list { display:flex; flex-direction:column; gap:10px; margin:16px 0; }
+    .action-btn { padding:16px 20px; background:var(--bg-surface); border:2px solid var(--border); border-radius:var(--radius-sm); color:var(--text-primary); font-size:1.1rem; cursor:pointer; transition:all 0.2s; text-align:left; }
+    .action-btn:hover, .action-btn:active { background:#2a2a44; border-color:var(--accent-gold); }
+    .action-btn.selected { border-color:var(--accent-gold); background:#2a2a33; }
+    .action-btn:disabled { opacity:0.5; cursor:not-allowed; }
 
-    .night-screen .moon { font-size: 4rem; display: block; margin-bottom: 16px; }
-    .night-screen .instruction { font-size: 1.1rem; margin: 16px 0; line-height: 1.5; }
+    .confirm-btn { font-size:1.2rem; padding:18px; margin-top:8px; }
 
-    .action-list {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      margin: 16px 0;
-    }
+    .waiting-screen { text-align:center; padding:60px 20px; }
+    .waiting-screen .pulse-dot { font-size:3rem; animation:pulse 1.5s infinite; }
 
-    .action-btn {
-      padding: 16px 20px;
-      background: var(--bg-surface);
-      border: 2px solid var(--border);
-      border-radius: var(--radius-sm);
-      color: var(--text-primary);
-      font-size: 1.1rem;
-      cursor: pointer;
-      transition: all 0.2s;
-      text-align: left;
-    }
+    .vote-list { display:flex; flex-direction:column; gap:10px; margin:16px 0; }
+    .result-screen { text-align:center; padding:40px 20px; }
+    .result-screen .big-text { font-size:2rem; margin:16px 0; }
 
-    .action-btn:hover, .action-btn:active { background: #2a2a44; border-color: var(--accent-gold); }
-    .action-btn.selected { border-color: var(--accent-gold); background: #2a2a33; }
+    .seer-result { padding:20px; border-radius:var(--radius); margin:16px 0; font-size:1.3rem; font-weight:600; }
+    .seer-result.innocent { background:rgba(79,195,161,0.2); border:2px solid var(--accent-villager); color:var(--accent-villager); }
+    .seer-result.guilty { background:rgba(231,76,60,0.2); border:2px solid var(--accent-werewolf); color:var(--accent-werewolf); }
 
-    .confirm-btn {
-      font-size: 1.2rem;
-      padding: 18px;
-      margin-top: 8px;
-    }
-
-    .waiting-screen { text-align: center; padding: 60px 20px; }
-    .waiting-screen .pulse-dot { font-size: 3rem; animation: pulse 1.5s infinite; }
-
-    .vote-list { display: flex; flex-direction: column; gap: 10px; margin: 16px 0; }
-
-    .result-screen { text-align: center; padding: 40px 20px; }
-    .result-screen .big-text { font-size: 2rem; margin: 16px 0; }
-
-    .seer-result {
-      padding: 20px;
-      border-radius: var(--radius);
-      margin: 16px 0;
-      font-size: 1.3rem;
-      font-weight: 600;
-    }
-
-    .seer-result.innocent { background: rgba(79,195,161,0.2); border: 2px solid var(--accent-villager); color: var(--accent-villager); }
-    .seer-result.guilty { background: rgba(231,76,60,0.2); border: 2px solid var(--accent-werewolf); color: var(--accent-werewolf); }
-
-    .phase-indicator { text-align: center; padding: 8px; font-size: 0.9rem; color: var(--text-secondary); }
+    .phase-indicator { text-align:center; padding:8px; font-size:0.9rem; color:var(--text-secondary); }
 
     .eliminated-overlay {
-      position: fixed;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(0,0,0,0.85);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      z-index: 100;
-      padding: 20px;
-      text-align: center;
+      position:fixed; top:0; left:0; right:0; bottom:0;
+      background:rgba(0,0,0,0.85);
+      display:flex; flex-direction:column;
+      align-items:center; justify-content:center;
+      z-index:100; padding:20px; text-align:center;
     }
-    .eliminated-overlay h2 { font-size: 2rem; margin-bottom: 12px; }
-    .eliminated-overlay .ghost { font-size: 4rem; }
+    .eliminated-overlay h2 { font-size:2rem; margin-bottom:12px; }
+    .eliminated-overlay .ghost { font-size:4rem; }
+
+    .action-confirmed { text-align:center; padding:30px; }
+    .action-confirmed .check { font-size:4rem; }
+    .action-confirmed .wait-text { color:var(--text-secondary); margin-top:16px; }
+
+    .day-intro-text { font-size:1.2rem; color:var(--text-secondary); margin-top:16px; line-height:1.6; }
+
+    @keyframes fadeInUp { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+    .fade-in-up { animation:fadeInUp 0.4s ease; }
   </style>
 </head>
 <body>
@@ -133,9 +98,7 @@
       <div class="phase-indicator">🌙 Night <span id="nightRound">1</span></div>
       <div class="night-screen" id="nightContent">
         <span class="moon">🌙</span>
-        <div id="nightActionArea">
-          <!-- Dynamic content based on role -->
-        </div>
+        <div id="nightActionArea"></div>
       </div>
     </div>
 
@@ -144,8 +107,8 @@
       <div class="phase-indicator">☀️ Day <span id="dayRound">1</span></div>
       <div class="night-screen">
         <span style="font-size: 3rem; display: block; margin-bottom: 16px;">☀️</span>
-        <h2>Day Phase — Discuss!</h2>
-        <p style="color: var(--text-secondary); margin-top: 12px;" id="dayNightResult">Last night…</p>
+        <h2>Discuss!</h2>
+        <p style="color: var(--text-secondary);" id="dayNightResult"></p>
       </div>
     </div>
 
@@ -154,9 +117,7 @@
       <div class="phase-indicator">🗳️ Vote — Round <span id="voteRound">1</span></div>
       <h3 style="text-align:center; margin-bottom: 12px;">Who do you suspect?</h3>
       <div id="votePlayerList" class="vote-list"></div>
-      <button class="btn btn-primary btn-block confirm-btn" id="submitVoteBtn" onclick="submitVote()" disabled>
-        Confirm Vote
-      </button>
+      <button class="btn btn-primary btn-block confirm-btn" id="submitVoteBtn" onclick="submitVote()" disabled>Confirm Vote</button>
       <p style="text-align:center;color:var(--text-secondary);font-size:0.9rem;margin-top:8px;" id="voteStatus">Select a player</p>
     </div>
 
@@ -165,8 +126,8 @@
       <div class="result-screen">
         <h2>⚖️ Verdict</h2>
         <div id="dayResultContent"></div>
+        <button class="btn btn-primary btn-block confirm-btn" id="ackDayResultBtn">Continue</button>
       </div>
-      <button class="btn btn-primary btn-block confirm-btn" id="ackDayResultBtn">Continue</button>
     </div>
 
     <!-- VICTORY -->
@@ -201,6 +162,7 @@
     let isAlive = true
     let selectedTarget = null
     let seerResult = null
+    let nightSubmitted = false
 
     if (!roomCode) {
       document.getElementById('app').innerHTML = `
@@ -226,18 +188,17 @@
       joinBtn.textContent = 'Joining…'
 
       // Anonymous auth
-      const { data: authData, error: authError } = await supabaseClient.auth.signInAnonymously()
+      const sb = getSupabase()
+      const { data: authData, error: authError } = await sb.auth.signInAnonymously()
       if (authError) {
         document.getElementById('joinError').textContent = 'Auth error: ' + authError.message
-        joinBtn.disabled = false
-        joinBtn.textContent = 'Join Game'
+        joinBtn.disabled = false; joinBtn.textContent = 'Join Game'
         return
       }
-
       userId = authData.user.id
 
       // Insert player
-      const { data, error } = await supabaseClient
+      const { data, error } = await sb
         .from('players')
         .insert({ room_code: roomCode, user_id: userId, name })
         .select()
@@ -245,50 +206,41 @@
 
       if (error) {
         if (error.code === '23505') {
-          document.getElementById('joinError').textContent = 'You already joined with this device!'
+          document.getElementById('joinError').textContent = 'You already joined! Try another name.'
         } else {
-          document.getElementById('joinError').textContent = 'Error joining: ' + error.message
+          document.getElementById('joinError').textContent = 'Error: ' + error.message
         }
-        joinBtn.disabled = false
-        joinBtn.textContent = 'Join Game'
+        joinBtn.disabled = false; joinBtn.textContent = 'Join Game'
         return
       }
 
       playerId = data.id
-
       document.getElementById('joinScreen').classList.add('hidden')
       document.getElementById('waitingScreen').classList.remove('hidden')
       document.getElementById('waitingRoomCode').textContent = `Room: ${roomCode}`
 
-      // Subscribe to room changes
-      setupListeners()
+      setupListeners(sb)
 
       // Check if game already started
-      const { data: room } = await supabaseClient
-        .from('rooms')
-        .select('phase, round')
-        .eq('room_code', roomCode)
-        .single()
-
+      const { data: room } = await sb.from('rooms').select('phase, round').eq('room_code', roomCode).single()
       if (room && room.phase !== 'lobby') {
-        await loadMyRole()
+        await loadMyRole(sb)
       }
     }
 
     // ==========================================
     // LISTENERS
     // ==========================================
-    function setupListeners() {
-      // Listen for role assignment (realtime)
-      supabaseClient
-        .channel(`player-role:${playerId}`)
+    function setupListeners(sb) {
+      // Watch for role insertion
+      sb.channel(`player-role:${playerId}`)
         .on('postgres_changes',
           { event: 'INSERT', schema: 'public', table: 'player_roles', filter: `player_id=eq.${playerId}` },
-          async () => await loadMyRole()
+          async () => await loadMyRole(sb)
         )
         .subscribe()
 
-      // Listen for room phase changes
+      // Broadcast channel
       const channel = getRoomChannel(roomCode)
       channel.on('broadcast', { event: 'phase_change' }, (msg) => handlePhaseChange(msg.payload))
       channel.on('broadcast', { event: 'night_result' }, (msg) => handleNightResultBroadcast(msg.payload))
@@ -296,16 +248,20 @@
       channel.on('broadcast', { event: 'victory' }, (msg) => handleVictoryBroadcast(msg.payload))
       channel.subscribe()
 
-      // Also watch rooms table for phase changes (fallback)
-      supabaseClient
-        .channel(`room-state:${roomCode}`)
+      // Fallback: rooms table changes
+      sb.channel(`room-state:${roomCode}`)
         .on('postgres_changes',
           { event: 'UPDATE', schema: 'public', table: 'rooms', filter: `room_code=eq.${roomCode}` },
           async (payload) => {
             const newPhase = payload.new.phase
-            if (newPhase && newPhase !== 'lobby') {
-              if (!myRole) await loadMyRole()
-              else handlePhaseChange({ phase: newPhase, round: payload.new.round })
+            if (!newPhase || newPhase === 'lobby') return
+            if (!myRole) await loadMyRole(sb)
+            else if (newPhase === 'night') {
+              // day_result broadcast already handled transition
+            } else if (newPhase === 'day_discussion' || newPhase === 'day_vote' || newPhase === 'day_results') {
+              handlePhaseChange({ phase: newPhase, round: payload.new.round })
+            } else if (newPhase === 'victory') {
+              // Handled by broadcast
             }
           }
         )
@@ -315,24 +271,14 @@
     // ==========================================
     // ROLE
     // ==========================================
-    async function loadMyRole() {
-      const { data, error } = await supabaseClient
-        .from('player_roles')
-        .select('role')
-        .eq('player_id', playerId)
-        .single()
-
+    async function loadMyRole(sb) {
+      if (!sb) sb = getSupabase()
+      const { data, error } = await sb.from('player_roles').select('role').eq('player_id', playerId).single()
       if (error || !data) return false
 
       myRole = data.role
 
-      // Check if eliminated
-      const { data: player } = await supabaseClient
-        .from('players')
-        .select('alive')
-        .eq('id', playerId)
-        .single()
-
+      const { data: player } = await sb.from('players').select('alive').eq('id', playerId).single()
       isAlive = player ? player.alive : true
 
       showRoleReveal()
@@ -341,15 +287,9 @@
 
     function showRoleReveal() {
       document.getElementById('waitingScreen').classList.add('hidden')
-      if (document.getElementById('nightScreen')) document.getElementById('nightScreen').classList.add('hidden')
-
-      if (!isAlive) {
-        showEliminated()
-        return
-      }
+      if (!isAlive) { showEliminated(); return }
 
       document.getElementById('roleRevealScreen').classList.remove('hidden')
-
       const config = ROLE_CONFIG[myRole]
       const card = document.getElementById('roleCard')
       card.style.borderColor = config.color
@@ -361,78 +301,64 @@
 
     function acknowledgeRole() {
       document.getElementById('roleRevealScreen').classList.add('hidden')
-
-      // Move to current phase
-      supabaseClient
-        .from('rooms')
-        .select('phase, round')
-        .eq('room_code', roomCode)
-        .single()
+      getSupabase().from('rooms').select('phase, round').eq('room_code', roomCode).single()
         .then(({ data }) => {
-          if (data) handlePhaseChange({ phase: data.phase, round: data.round })
+          if (data && data.phase !== 'lobby') handlePhaseChange({ phase: data.phase, round: data.round })
           else showWaiting()
         })
     }
 
-    function showWaiting() {
-      document.getElementById('waitingScreen').classList.remove('hidden')
-    }
+    function showWaiting() { document.getElementById('waitingScreen').classList.remove('hidden') }
 
     function showEliminated() {
-      const overlay = document.getElementById('eliminatedOverlay')
-      overlay.classList.remove('hidden')
-      const roleName = myRole ? ROLE_CONFIG[myRole]?.name || myRole : 'Unknown'
+      document.getElementById('eliminatedOverlay').classList.remove('hidden')
+      const roleName = myRole ? (ROLE_CONFIG[myRole]?.name || myRole) : 'Unknown'
       document.getElementById('eliminatedRoleText').textContent = `Your role was: ${roleName}`
     }
 
     // ==========================================
     // PHASE HANDLING
     // ==========================================
-    function handlePhaseChange(payload) {
-      if (!isAlive && payload.phase !== 'victory') return
-
-      document.getElementById('roleRevealScreen')?.classList.add('hidden')
-      document.getElementById('nightScreen')?.classList.add('hidden')
-      document.getElementById('dayDiscussionScreen')?.classList.add('hidden')
-      document.getElementById('voteScreen')?.classList.add('hidden')
-      document.getElementById('dayResultsScreen')?.classList.add('hidden')
-      document.getElementById('victoryScreen')?.classList.add('hidden')
-      document.getElementById('waitingScreen')?.classList.add('hidden')
+    function hideAllScreens() {
+      ;['roleRevealScreen','nightScreen','dayDiscussionScreen','voteScreen','dayResultsScreen','victoryScreen','waitingScreen'].forEach(id => {
+        const el = document.getElementById(id)
+        if (el) el.classList.add('hidden')
+      })
       document.getElementById('eliminatedOverlay')?.classList.add('hidden')
+    }
 
+    function handlePhaseChange(payload) {
       if (!isAlive && payload.phase !== 'victory') {
+        hideAllScreens()
         showEliminated()
         return
       }
+      hideAllScreens()
+      if (!isAlive && payload.phase !== 'victory') { showEliminated(); return }
 
       switch (payload.phase) {
-        case 'night':
-          showNightPhase(payload.round || 1)
-          break
+        case 'night': showNightPhase(payload.round || 1); break
         case 'day_discussion':
-          showDayDiscussion(payload.round || 1)
+          // Re-check alive status
+          getSupabase().from('players').select('alive').eq('id', playerId).single().then(({ data }) => {
+            if (data && !data.alive) { isAlive = false; hideAllScreens(); showEliminated(); return }
+            showDayDiscussion(payload.round || 1)
+          })
           break
-        case 'day_vote':
-          showVoting(payload.round || 1)
-          break
-        case 'day_results':
-          // handled by broadcast
-          break
-        case 'victory':
-          // handled by broadcast
-          break
-        default:
-          showWaiting()
+        case 'day_vote': showVoting(payload.round || 1); break
+        case 'day_results': break // Handled by broadcast
+        default: showWaiting()
       }
     }
 
     // ==========================================
-    // NIGHT PHASE
+    // NIGHT
     // ==========================================
     async function showNightPhase(round) {
+      seerResult = null
+      nightSubmitted = false
       document.getElementById('nightScreen').classList.remove('hidden')
       document.getElementById('nightRound').textContent = round
-
       const area = document.getElementById('nightActionArea')
 
       if (myRole === ROLES.VILLAGER) {
@@ -441,18 +367,14 @@
           <div style="margin-top: 40px;">
             <div style="font-size: 3rem; animation: pulse 2s infinite;">💤</div>
             <p style="color: var(--text-secondary); margin-top: 16px;">The werewolves are moving…</p>
-          </div>
-        `
+          </div>`
       } else if (myRole === ROLES.WEREWOLF) {
         area.innerHTML = `
           <div class="instruction">🐺 Choose a victim to eliminate tonight.</div>
-          <p style="color: var(--text-secondary); font-size: 0.9rem;">Select wisely — coordination wins.</p>
+          <p style="color: var(--text-secondary); font-size: 0.9rem;">Pick your target.</p>
           <div id="werewolfTargetList" class="action-list"></div>
-          <button class="btn btn-danger btn-block confirm-btn" id="submitNightKillBtn" onclick="submitNightKill()" disabled>
-            🐺 Attack!
-          </button>
-          <p style="text-align:center;color:var(--text-secondary);font-size:0.9rem;margin-top:8px;" id="nightKillStatus">Select a target</p>
-        `
+          <button class="btn btn-danger btn-block confirm-btn" id="submitNightKillBtn" onclick="submitNightKill()" disabled>🐺 Attack!</button>
+          <p style="text-align:center;color:var(--text-secondary);font-size:0.9rem;margin-top:8px;" id="nightKillStatus">Select a target</p>`
         selectedTarget = null
         await loadTargetList('werewolfTargetList', (id, name) => {
           selectedTarget = id
@@ -463,14 +385,11 @@
         })
       } else if (myRole === ROLES.SEER) {
         area.innerHTML = `
-          <div class="instruction">🔮 Select a player to investigate.</div>
-          <p style="color: var(--text-secondary); font-size: 0.9rem;">You will learn if they are a Werewolf.</p>
+          <div class="instruction">🔮 Investigate one player.</div>
+          <p style="color: var(--text-secondary); font-size: 0.9rem;">You'll learn if they're a werewolf.</p>
           <div id="seerTargetList" class="action-list"></div>
-          <button class="btn btn-primary btn-block confirm-btn" id="submitSeerBtn" onclick="submitSeerAction()" disabled>
-            🔮 Investigate
-          </button>
-          <p style="text-align:center;color:var(--text-secondary);font-size:0.9rem;margin-top:8px;" id="seerStatus">Select a player</p>
-        `
+          <button class="btn btn-primary btn-block confirm-btn" id="submitSeerBtn" onclick="submitSeerAction()" disabled>🔮 Investigate</button>
+          <p style="text-align:center;color:var(--text-secondary);font-size:0.9rem;margin-top:8px;" id="seerStatus">Select a player</p>`
         selectedTarget = null
         await loadTargetList('seerTargetList', (id, name) => {
           selectedTarget = id
@@ -481,14 +400,11 @@
         })
       } else if (myRole === ROLES.DOCTOR) {
         area.innerHTML = `
-          <div class="instruction">💉 Choose a player to protect tonight.</div>
-          <p style="color: var(--text-secondary); font-size: 0.9rem;">You may choose yourself.</p>
+          <div class="instruction">💉 Protect one player tonight.</div>
+          <p style="color: var(--text-secondary); font-size: 0.9rem;">You may protect yourself.</p>
           <div id="doctorTargetList" class="action-list"></div>
-          <button class="btn btn-primary btn-block confirm-btn" id="submitDoctorBtn" onclick="submitDoctorAction()" disabled>
-            💉 Protect
-          </button>
-          <p style="text-align:center;color:var(--text-secondary);font-size:0.9rem;margin-top:8px;" id="doctorStatus">Select a player</p>
-        `
+          <button class="btn btn-primary btn-block confirm-btn" id="submitDoctorBtn" onclick="submitDoctorAction()" disabled>💉 Protect</button>
+          <p style="text-align:center;color:var(--text-secondary);font-size:0.9rem;margin-top:8px;" id="doctorStatus">Select a player</p>`
         selectedTarget = null
         await loadTargetList('doctorTargetList', (id, name) => {
           selectedTarget = id
@@ -501,12 +417,12 @@
     }
 
     async function loadTargetList(containerId, onSelect) {
-      const { data: players } = await supabaseClient
+      const sb = getSupabase()
+      const { data: players } = await sb
         .from('players')
         .select('id, name')
         .eq('room_code', roomCode)
         .eq('alive', true)
-        .neq('id', myRole === ROLES.DOCTOR ? -1 : playerId) // Doctor can self-target
 
       const container = document.getElementById(containerId)
       if (!players || players.length === 0) {
@@ -514,7 +430,10 @@
         return
       }
 
-      container.innerHTML = players.map(p => {
+      // Filter out self for non-doctors
+      const filtered = myRole === ROLES.DOCTOR ? players : players.filter(p => p.id !== playerId)
+
+      container.innerHTML = filtered.map(p => {
         const isSelf = p.id === playerId
         return `<button class="action-btn" data-id="${p.id}" onclick="window._selectTarget(${p.id}, '${p.name.replace(/'/g, "\\'")}')">
           ${isSelf ? '👤 ' : ''}${p.name}${isSelf ? ' (you)' : ''}
@@ -527,54 +446,56 @@
     // ==========================================
     // SUBMIT NIGHT ACTIONS
     // ==========================================
+    function showNightConfirmed() {
+      const area = document.getElementById('nightActionArea')
+      area.innerHTML = `
+        <div class="action-confirmed fade-in-up">
+          <div class="check">✅</div>
+          <h3>Action Submitted!</h3>
+          <p class="wait-text">Waiting for other players...</p>
+        </div>`
+    }
+
     async function submitNightKill() {
       if (!selectedTarget) return
       document.getElementById('submitNightKillBtn').disabled = true
       document.getElementById('nightKillStatus').textContent = 'Submitted ✓'
-
-      await supabaseClient
-        .from('night_actions')
-        .upsert({
-          room_code: roomCode,
-          round: parseInt(document.getElementById('nightRound').textContent),
-          player_id: playerId,
-          target_id: selectedTarget,
-          action_type: 'kill'
-        }, { onConflict: 'room_code,round,player_id' })
+      await getSupabase().from('night_actions').upsert({
+        room_code: roomCode,
+        round: parseInt(document.getElementById('nightRound').textContent),
+        player_id: playerId,
+        target_id: selectedTarget,
+        action_type: 'kill'
+      }, { onConflict: 'room_code,round,player_id' })
+      showNightConfirmed()
     }
 
     async function submitSeerAction() {
       if (!selectedTarget) return
       document.getElementById('submitSeerBtn').disabled = true
       document.getElementById('seerStatus').textContent = 'Investigating…'
-
-      await supabaseClient
-        .from('night_actions')
-        .upsert({
-          room_code: roomCode,
-          round: parseInt(document.getElementById('nightRound').textContent),
-          player_id: playerId,
-          target_id: selectedTarget,
-          action_type: 'investigate'
-        }, { onConflict: 'room_code,round,player_id' })
-
-      document.getElementById('seerStatus').textContent = 'Submitted ✓'
+      await getSupabase().from('night_actions').upsert({
+        room_code: roomCode,
+        round: parseInt(document.getElementById('nightRound').textContent),
+        player_id: playerId,
+        target_id: selectedTarget,
+        action_type: 'investigate'
+      }, { onConflict: 'room_code,round,player_id' })
+      showNightConfirmed()
     }
 
     async function submitDoctorAction() {
       if (!selectedTarget) return
       document.getElementById('submitDoctorBtn').disabled = true
       document.getElementById('doctorStatus').textContent = 'Protected! 💉'
-
-      await supabaseClient
-        .from('night_actions')
-        .upsert({
-          room_code: roomCode,
-          round: parseInt(document.getElementById('nightRound').textContent),
-          player_id: playerId,
-          target_id: selectedTarget,
-          action_type: 'protect'
-        }, { onConflict: 'room_code,round,player_id' })
+      await getSupabase().from('night_actions').upsert({
+        room_code: roomCode,
+        round: parseInt(document.getElementById('nightRound').textContent),
+        player_id: playerId,
+        target_id: selectedTarget,
+        action_type: 'protect'
+      }, { onConflict: 'room_code,round,player_id' })
+      showNightConfirmed()
     }
 
     // ==========================================
@@ -583,19 +504,18 @@
     function showDayDiscussion(round) {
       document.getElementById('dayDiscussionScreen').classList.remove('hidden')
       document.getElementById('dayRound').textContent = round
+      document.getElementById('dayNightResult').textContent = '☀️ It\'s daytime! Discuss who you suspect...'
 
-      const nightResult = document.getElementById('dayNightResult')
+      // Show seer result if available
+      const parent = document.getElementById('dayNightResult').parentElement
+      const existing = parent.querySelector('.seer-result')
+      if (existing) existing.remove()
 
-      // The night result text will be updated via broadcast
       if (seerResult !== null) {
-        const seerDiv = nightResult.parentElement
-        const existing = seerDiv.querySelector('.seer-result')
-        if (existing) existing.remove()
-
         const div = document.createElement('div')
         div.className = `seer-result ${seerResult ? 'guilty' : 'innocent'}`
-        div.textContent = `🔮 Your investigation: ${seerResult ? '🐺 WEREWOLF!' : '✅ Innocent'}`
-        seerDiv.appendChild(div)
+        div.textContent = seerResult ? '🐺 They are a WEREWOLF!' : '✅ Innocent'
+        parent.appendChild(div)
       }
     }
 
@@ -607,7 +527,8 @@
       document.getElementById('voteRound').textContent = round
       selectedTarget = null
 
-      const { data: players } = await supabaseClient
+      const sb = getSupabase()
+      const { data: players } = await sb
         .from('players')
         .select('id, name')
         .eq('room_code', roomCode)
@@ -616,21 +537,21 @@
 
       const list = document.getElementById('votePlayerList')
       if (!players || players.length === 0) {
-        list.innerHTML = '<p style="color: var(--text-secondary); text-align:center;">No one to vote for.</p>'
+        list.innerHTML = '<p style="color:var(--text-secondary);text-align:center;">No one to vote for.</p>'
         return
       }
 
       list.innerHTML = players.map(p =>
-        `<button class="action-btn" data-id="${p.id}" onclick="selectVote(${p.id}, '${p.name.replace(/'/g, "\\'")}')">
-          ${p.name}
-        </button>`
+        `<button class="action-btn" data-id="${p.id}" onclick="selectVote(${p.id})">${p.name}</button>`
       ).join('')
     }
 
-    function selectVote(id, name) {
+    function selectVote(id) {
       selectedTarget = id
-      document.querySelectorAll('#votePlayerList .action-btn').forEach(b => b.classList.remove('selected'))
-      event.currentTarget.classList.add('selected')
+      document.querySelectorAll('#votePlayerList .action-btn').forEach(b => {
+        b.classList.toggle('selected', parseInt(b.dataset.id) === id)
+      })
+      const name = document.querySelector(`.action-btn.selected`)?.textContent || 'Player'
       document.getElementById('submitVoteBtn').disabled = false
       document.getElementById('voteStatus').textContent = `Voting to eliminate: ${name}`
     }
@@ -639,27 +560,22 @@
       if (!selectedTarget) return
       document.getElementById('submitVoteBtn').disabled = true
       document.getElementById('voteStatus').textContent = 'Vote submitted ✓'
-
-      await supabaseClient
-        .from('day_votes')
-        .upsert({
-          room_code: roomCode,
-          round: parseInt(document.getElementById('voteRound').textContent),
-          voter_id: playerId,
-          target_id: selectedTarget
-        }, { onConflict: 'room_code,round,voter_id' })
+      await getSupabase().from('day_votes').upsert({
+        room_code: roomCode,
+        round: parseInt(document.getElementById('voteRound').textContent),
+        voter_id: playerId,
+        target_id: selectedTarget
+      }, { onConflict: 'room_code,round,voter_id' })
     }
 
     // ==========================================
     // BROADCAST HANDLERS
     // ==========================================
     function handleNightResultBroadcast(payload) {
-      // Seer gets their personal result
+      // Seer gets personal result
       if (myRole === ROLES.SEER && payload.seerResults) {
         const myResult = payload.seerResults.find(r => r.seer_player_id === playerId)
-        if (myResult) {
-          seerResult = myResult.is_werewolf
-        }
+        if (myResult) seerResult = myResult.is_werewolf
       }
 
       // If player was killed
@@ -670,58 +586,48 @@
     }
 
     function handleDayResultBroadcast(payload) {
-      document.getElementById('nightScreen')?.classList.add('hidden')
-      document.getElementById('dayDiscussionScreen')?.classList.add('hidden')
-      document.getElementById('voteScreen')?.classList.add('hidden')
-
-      if (!isAlive) {
-        showEliminated()
-        return
-      }
+      hideAllScreens()
+      if (!isAlive) { showEliminated(); return }
 
       document.getElementById('dayResultsScreen').classList.remove('hidden')
       const content = document.getElementById('dayResultContent')
+      const eliminated = payload.eliminatedPlayer
+      const ackBtn = document.getElementById('ackDayResultBtn')
 
-      let html = ''
-      if (payload.eliminatedPlayer && payload.eliminatedPlayer.id === playerId) {
+      if (eliminated && eliminated.id === playerId) {
         isAlive = false
-        html = `<div class="elimination-flash" style="font-size: 2rem; margin: 20px 0;">
-          ⚖️ You were eliminated!
-        </div>`
-        document.getElementById('ackDayResultBtn').textContent = '👻 Watch the game'
-        document.getElementById('ackDayResultBtn').onclick = () => showEliminated()
-        content.innerHTML = html
+        content.innerHTML = `<div class="elimination-flash" style="font-size:2rem;margin:20px 0;">⚖️ You were eliminated!</div>`
+        ackBtn.textContent = '👻 Watch the game'
+        ackBtn.onclick = () => { hideAllScreens(); showEliminated() }
         return
       }
 
-      if (payload.eliminatedPlayer) {
-        const roleName = payload.eliminatedPlayer.role.charAt(0).toUpperCase() + payload.eliminatedPlayer.role.slice(1)
-        const roleConfig = ROLE_CONFIG[payload.eliminatedPlayer.role]
-        html = `<div class="elimination-flash" style="font-size: 1.5rem; margin: 20px 0;">
-          ⚖️ <strong>${payload.eliminatedPlayer.name}</strong> was eliminated!<br>
-          <span style="font-size: 1.8rem;">${roleConfig?.emoji || '❓'} ${roleName}</span>
+      if (eliminated) {
+        const roleName = eliminated.role.charAt(0).toUpperCase() + eliminated.role.slice(1)
+        const roleConfig = ROLE_CONFIG[eliminated.role]
+        content.innerHTML = `<div class="elimination-flash" style="font-size:1.5rem;margin:20px 0;">
+          ⚖️ <strong>${eliminated.name}</strong> was eliminated!<br>
+          <span style="font-size:1.8rem;">${roleConfig?.emoji || '❓'} ${roleName}</span>
         </div>`
       } else {
-        html = `<div style="font-size: 1.3rem; margin: 20px 0; color: var(--accent-gold);">
-          ⚖️ No one was eliminated (tie/no votes).
+        content.innerHTML = `<div style="font-size:1.3rem;margin:20px 0;color:var(--accent-gold);">
+          ⚖️ No one was eliminated (tie).
         </div>`
       }
 
-      content.innerHTML = html
-
-      document.getElementById('ackDayResultBtn').onclick = () => {
+      ackBtn.textContent = 'Continue'
+      ackBtn.onclick = () => {
         document.getElementById('dayResultsScreen').classList.add('hidden')
+        document.getElementById('waitingScreen').classList.remove('hidden')
+        document.getElementById('waitingScreen').querySelector('h2').textContent = 'Waiting for next phase...'
       }
     }
 
     function handleVictoryBroadcast(payload) {
-      document.getElementById('nightScreen')?.classList.add('hidden')
-      document.getElementById('dayDiscussionScreen')?.classList.add('hidden')
-      document.getElementById('voteScreen')?.classList.add('hidden')
-      document.getElementById('dayResultsScreen')?.classList.add('hidden')
+      hideAllScreens()
+      document.getElementById('victoryScreen').classList.remove('hidden')
       document.getElementById('eliminatedOverlay')?.classList.add('hidden')
 
-      document.getElementById('victoryScreen').classList.remove('hidden')
       const emoji = document.getElementById('playerVictoryEmoji')
       const title = document.getElementById('playerVictoryTitle')
       const sub = document.getElementById('playerVictorySub')
