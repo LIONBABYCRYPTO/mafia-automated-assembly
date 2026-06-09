@@ -1,6 +1,8 @@
-// Mafia Game API — Cloudflare Worker (fetch export format)
-// v2.0 — Role balancing: Doctor (no self/consecutive), Seer (Good/Bad),
-//         Wolf King (mark target), Shooter (revenge kill)
+// Werewolf Game API — Cloudflare Worker
+// v3.0 — Online/offline detection, heartbeat, auto-remove ghosts, branding
+
+const DEFAULT_HEARTBEAT_TIMEOUT = 60000; // 60s inactivity = offline
+const GHOST_REMOVE_TIMEOUT = 300000;     // 5min offline = removed (lobby only)
 
 export default {
   async fetch(request, env) {
@@ -15,7 +17,7 @@ export default {
     try {
       const path = url.pathname;
 
-      // POST /api/rooms — create room
+      // POST /api/rooms
       if (path === '/api/rooms' && method === 'POST') {
         const body = await request.json();
         const code = body.room_code || Math.random().toString(36).substring(2, 8).toUpperCase();
@@ -28,12 +30,9 @@ export default {
           nightActions: [], dayVotes: [], investigationResults: [],
           lastKilledName: null, lastDoctorSaved: false,
           customWolfCount: wolfCount,
-          phaseStartedAt: Date.now(),
-          phaseDuration: 0,
-          werewolfChat: [],
-          finalWords: {},
-          lastWolfKingMark: null,  // playerId the Wolf King has marked
-          shooterRevengePending: null, // playerId who died with revenge shot unspent
+          phaseStartedAt: Date.now(), phaseDuration: 0,
+          werewolfChat: [], finalWords: {},
+          lastWolfKingMark: null, shooterRevengePending: null,
         };
         await env.GAME_KV.put(`room:${code}`, JSON.stringify(state));
         return json({ room_code: code, host_token: hostToken }, 200, origin);
@@ -41,10 +40,7 @@ export default {
 
       // GET /api/rooms/CODE
       if (path.startsWith('/api/rooms/') && method === 'GET') {
-        const code = path.replace('/api/rooms/', '');
-        const raw = await env.GAME_KV.get(`room:${code}`);
-        if (!raw) return json({ error: 'Room not found' }, 404, origin);
-        return json(publicState(JSON.parse(raw)), 200, origin);
+        return handleGetRoom(path, env, origin);
       }
 
       // POST /api/update-phase
@@ -67,14 +63,65 @@ export default {
         const raw = await env.GAME_KV.get(`room:${body.room_code}`);
         if (!raw) return json({ error: 'Room not found' }, 404, origin);
         const state = JSON.parse(raw);
+        // Remove old ghosts before adding new
+        state.players = state.players.filter(p => p.alive || p.role);
         const userId = generateToken();
         const id = state.nextPlayerId++;
-        state.players.push({ id, userId, name: body.name, alive: true });
+        state.players.push({ id, userId, name: body.name, alive: true, lastHeartbeat: Date.now(), online: true, joinedAt: Date.now() });
         await env.GAME_KV.put(`room:${body.room_code}`, JSON.stringify(state));
         return json({ id, player_token: userId }, 200, origin);
       }
 
-      // GET /api/players?room_code=CODE
+      // POST /api/heartbeat — online/offline ping
+      if (path === '/api/heartbeat' && method === 'POST') {
+        const body = await request.json();
+        const raw = await env.GAME_KV.get(`room:${body.room_code}`);
+        if (!raw) return json({ error: 'Room not found' }, 404, origin);
+        const state = JSON.parse(raw);
+        const player = state.players.find(p => p.id === body.player_id);
+        if (player) {
+          player.lastHeartbeat = Date.now();
+          player.online = true;
+          await env.GAME_KV.put(`room:${body.room_code}`, JSON.stringify(state));
+          return json({ success: true }, 200, origin);
+        }
+        return json({ error: 'Player not found' }, 404, origin);
+      }
+
+      // POST /api/check-ghosts — sweep offline players in lobby
+      if (path === '/api/check-ghosts' && method === 'POST') {
+        const body = await request.json();
+        const raw = await env.GAME_KV.get(`room:${body.room_code}`);
+        if (!raw) return json({ error: 'Room not found' }, 404, origin);
+        const state = JSON.parse(raw);
+        if (state.phase !== 'lobby') return json({ success: true, count: 0 }, 200, origin);
+        const now = Date.now();
+        const before = state.players.length;
+        state.players = state.players.filter(p => {
+          if (!p.online && (now - (p.lastHeartbeat || 0)) > GHOST_REMOVE_TIMEOUT) return false;
+          if ((now - (p.lastHeartbeat || 0)) > DEFAULT_HEARTBEAT_TIMEOUT) p.online = false;
+          return true;
+        });
+        await env.GAME_KV.put(`room:${body.room_code}`, JSON.stringify(state));
+        return json({ success: true, removed: before - state.players.length }, 200, origin);
+      }
+
+      // GET /api/player-online — check online status (host-side)
+      if (path === '/api/player-online' && method === 'GET') {
+        const code = url.searchParams.get('room_code') || '';
+        const raw = await env.GAME_KV.get(`room:${code}`);
+        if (!raw) return json({ error: 'Room not found' }, 404, origin);
+        const state = JSON.parse(raw);
+        const now = Date.now();
+        const result = state.players.map(p => ({
+          id: p.id, name: p.name, alive: p.alive,
+          online: p.online && (now - (p.lastHeartbeat || 0)) < DEFAULT_HEARTBEAT_TIMEOUT,
+          lastSeen: p.lastHeartbeat || 0,
+        }));
+        return json(result, 200, origin);
+      }
+
+      // GET /api/players
       if (path === '/api/players' && method === 'GET') {
         const code = url.searchParams.get('room_code') || '';
         const raw = await env.GAME_KV.get(`room:${code}`);
@@ -83,7 +130,7 @@ export default {
         return json(state.players.map(p => ({ id: p.id, name: p.name, alive: p.alive })), 200, origin);
       }
 
-      // DELETE /api/players — remove player (host only)
+      // DELETE /api/players
       if (path === '/api/players' && method === 'DELETE') {
         const body = await request.json();
         const raw = await env.GAME_KV.get(`room:${body.room_code}`);
@@ -95,7 +142,7 @@ export default {
         return json({ success: true }, 200, origin);
       }
 
-      // GET /api/player-roles?room_code=X&player_id=X
+      // GET /api/player-roles
       if (path === '/api/player-roles' && method === 'GET') {
         const code = url.searchParams.get('room_code') || '';
         const playerId = parseInt(url.searchParams.get('player_id') || '0');
@@ -114,7 +161,6 @@ export default {
         const raw = await env.GAME_KV.get(`room:${body.room_code}`);
         if (!raw) return json({ error: 'Room not found' }, 404, origin);
         const state = JSON.parse(raw);
-
         const count = state.players.length;
         if (count < 6) return json({ error: `Need at least 6 players, got ${count}` }, 400, origin);
 
@@ -126,9 +172,7 @@ export default {
         const roles = [];
 
         if (hasExpanded) {
-          // 12+ players: include Wolf King and Shooter
-          // At least 1 werewolf (Wolf King fills one wolf slot), 1 seer, 1 doctor, 1 shooter, rest villagers
-          let wolfCount = Math.max(1, numWolves - 1); // Wolf King replaces one werewolf
+          let wolfCount = Math.max(1, numWolves - 1);
           for (let i = 0; i < count; i++) {
             if (i < wolfCount) roles.push('werewolf');
             else if (i === wolfCount) roles.push('wolf_king');
@@ -138,7 +182,6 @@ export default {
             else roles.push('villager');
           }
         } else {
-          // Under 12: classic roles only
           for (let i = 0; i < count; i++) {
             if (i < numWolves) roles.push('werewolf');
             else if (i === numWolves) roles.push('seer');
@@ -147,25 +190,18 @@ export default {
           }
         }
 
-        // Shuffle
         for (let i = roles.length - 1; i > 0; i--) {
           const j = Math.floor(Math.random() * (i + 1));
           [roles[i], roles[j]] = [roles[j], roles[i]];
         }
 
-        state.players.forEach((p, i) => p.role = roles[i]);
-        state.phase = 'night';
-        state.round = 1;
+        state.players.forEach((p, i) => { p.role = roles[i]; p.online = true; p.lastHeartbeat = Date.now(); });
+        state.phase = 'night'; state.round = 1;
         state.phaseStartedAt = Date.now();
-        state.nightActions = [];
-        state.dayVotes = [];
-        state.investigationResults = [];
-        state.lastKilledName = null;
-        state.lastDoctorSaved = false;
-        state.werewolfChat = [];
-        state.finalWords = {};
-        state.lastWolfKingMark = null;
-        state.shooterRevengePending = null;
+        state.nightActions = []; state.dayVotes = []; state.investigationResults = [];
+        state.lastKilledName = null; state.lastDoctorSaved = false;
+        state.werewolfChat = []; state.finalWords = {};
+        state.lastWolfKingMark = null; state.shooterRevengePending = null;
         await env.GAME_KV.put(`room:${body.room_code}`, JSON.stringify(state));
         return json({ success: true, playerCount: count, hasExpandedRoles: hasExpanded }, 200, origin);
       }
@@ -182,40 +218,31 @@ export default {
 
         const response = { success: true };
 
-        // Doctor restrictions: no self-protect, no consecutive same target
         if (body.action_type === 'protect') {
           if (body.target_id === body.player_id) {
             return json({ error: 'Doctor cannot protect themselves' }, 400, origin);
           }
-          // Check if doctor protected the same target last round
-          const lastRound = state.round - 1;
-          const lastProtectKey = body.player_id + '_lastProtected';
-          const lastProtected = player.lastProtectedPlayerId; // stored on doctor player record
+          const lastProtected = player.lastProtectedPlayerId;
           if (lastProtected && body.target_id === lastProtected) {
             return json({ error: 'Doctor cannot protect the same player on consecutive nights' }, 400, origin);
           }
         }
 
-        // Wolf King mark action
         if (body.action_type === 'mark' && body.target_id) {
           state.lastWolfKingMark = body.target_id;
         }
 
-        // Remove old action from this player for same type
         state.nightActions = state.nightActions.filter(a => a.playerId !== body.player_id || a.actionType !== body.action_type);
         state.nightActions.push({ playerId: body.player_id, targetId: body.target_id || null, actionType: body.action_type });
 
-        // For doctor, store who they protected for consecutive-night check
         if (body.action_type === 'protect') {
           player.lastProtectedPlayerId = body.target_id;
         }
 
-        // Seer investigation — "Good" or "Bad" only
         if (body.action_type === 'investigate' && body.target_id) {
           const target = state.players.find(p => p.id === body.target_id);
           if (target && target.role) {
             const isBad = target.role === 'werewolf' || target.role === 'wolf_king';
-            const isGoodName = '🤝 Good';
             response.investigation = { targetId: target.id, targetName: target.name, isGood: !isBad, result: isBad ? '☠️ Bad' : '🤝 Good' };
             state.investigationResults = state.investigationResults.filter(r => r.investigatorId !== body.player_id);
             state.investigationResults.push({ investigatorId: body.player_id, targetId: target.id, targetRole: target.role, targetName: target.name });
@@ -236,7 +263,6 @@ export default {
         const kills = state.nightActions.filter(a => a.actionType === 'kill' && a.targetId);
         const protects = state.nightActions.filter(a => a.actionType === 'protect' && a.targetId);
 
-        // Tally wolf kills (both werewolf and wolf_king)
         const tally = {};
         kills.forEach(k => { if (k.targetId) tally[k.targetId] = (tally[k.targetId] || 0) + 1; });
         let victimId = null, maxVotes = 0;
@@ -253,45 +279,33 @@ export default {
         state.lastKilledName = killedName;
         state.lastDoctorSaved = saved;
 
-        // === Shooter revenge check ===
-        // If shooter died (was eliminated), they get a revenge shot
         if (killedName && killedRole === 'shooter') {
-          state.shooterRevengePending = victimId; // mark shooter id for revenge
+          state.shooterRevengePending = victimId;
         }
 
-        // === Wolf King mark death chain ===
-        // If Wolf King died for any reason (killed by vote, night kill, etc.)
-        // the marked player dies too
         const wolfKing = state.players.find(p => p.role === 'wolf_king' && !p.alive);
         if (wolfKing && state.lastWolfKingMark) {
           const markedTarget = state.players.find(p => p.id === state.lastWolfKingMark && p.alive);
           if (markedTarget) {
             markedTarget.alive = false;
             killedName = (killedName || '') + ' • Via Mark: ' + markedTarget.name;
-            state.lastWolfKingMark = null; // clear after use
+            state.lastWolfKingMark = null;
           }
         }
 
         const winner = checkWin(state);
         if (winner) {
-          state.phase = 'victory';
-          state.winner = winner;
-          // If there's a pending shooter revenge, include it
+          state.phase = 'victory'; state.winner = winner;
           const result = { killedPlayer: killedName ? { name: killedName } : null, saved, winner };
-          if (state.shooterRevengePending) {
-            result.shooterRevengePending = true;
-          }
+          if (state.shooterRevengePending) result.shooterRevengePending = true;
           await env.GAME_KV.put(`room:${body.room_code}`, JSON.stringify(state));
           return json(result, 200, origin);
         }
 
         state.phase = 'day_discussion';
         state.phaseStartedAt = Date.now();
-        // Don't clear nightActions yet — shooter needs to use revenge if pending
-
-        // If shooter revenge is pending, keep night phase to let shooter act
         if (state.shooterRevengePending) {
-          state.phase = 'night'; // stay in night for shooter to take revenge
+          state.phase = 'night';
           state.phaseStartedAt = Date.now();
         } else {
           state.nightActions = [];
@@ -302,7 +316,7 @@ export default {
         return json({ killedPlayer: killedName ? { name: killedName } : null, saved, round: state.round, shooterRevengePending: !!state.shooterRevengePending }, 200, origin);
       }
 
-      // POST /api/shooter-revenge — shooter takes revenge shot
+      // POST /api/shooter-revenge
       if (path === '/api/shooter-revenge' && method === 'POST') {
         const body = await request.json();
         const auth = parseAuth(request);
@@ -312,24 +326,19 @@ export default {
         const player = state.players.find(p => p.id === body.player_id && p.userId === auth.token);
         if (!player) return json({ error: 'Forbidden' }, 403, origin);
         if (!state.shooterRevengePending || state.shooterRevengePending !== body.player_id) {
-          return json({ error: 'No revenge shot pending for this player' }, 400, origin);
+          return json({ error: 'No revenge shot pending' }, 400, origin);
         }
-
-        // Kill the target
         const target = state.players.find(p => p.id === body.target_id && p.alive);
-        if (!target) return json({ error: 'Target not found or already dead' }, 400, origin);
+        if (!target) return json({ error: 'Target not found or dead' }, 400, origin);
         target.alive = false;
-        state.shooterRevengePending = null; // revenge used
+        state.shooterRevengePending = null;
         state.lastKilledName = target.name;
-
         const winner = checkWin(state);
         if (winner) {
           state.phase = 'victory'; state.winner = winner;
           await env.GAME_KV.put(`room:${body.room_code}`, JSON.stringify(state));
           return json({ killedPlayer: { name: target.name }, winner }, 200, origin);
         }
-
-        // Transition to day discussion
         state.phase = 'day_discussion';
         state.phaseStartedAt = Date.now();
         state.nightActions = [];
@@ -353,7 +362,7 @@ export default {
         return json({ success: true }, 200, origin);
       }
 
-      // GET /api/vote-tally?room_code=CODE
+      // GET /api/vote-tally
       if (path === '/api/vote-tally' && method === 'GET') {
         const code = url.searchParams.get('room_code') || '';
         const raw = await env.GAME_KV.get(`room:${code}`);
@@ -375,14 +384,12 @@ export default {
         const raw = await env.GAME_KV.get(`room:${body.room_code}`);
         if (!raw) return json({ error: 'Room not found' }, 404, origin);
         const state = JSON.parse(raw);
-
         const tally = {};
         state.dayVotes.forEach(v => { if (v.targetId) tally[v.targetId] = (tally[v.targetId] || 0) + 1; });
         let eliminatedId = null, maxVotes = 0;
         for (const [id, c] of Object.entries(tally)) {
           if (c > maxVotes) { maxVotes = c; eliminatedId = Number(id); }
         }
-
         let eliminatedName = null, eliminatedRole = null;
         if (eliminatedId !== null) {
           const ep = state.players.find(p => p.id === eliminatedId);
@@ -390,12 +397,8 @@ export default {
         }
         state.lastKilledName = eliminatedName;
 
-        // === Shooter revenge check for day elimination ===
-        if (eliminatedRole === 'shooter') {
-          state.shooterRevengePending = eliminatedId;
-        }
+        if (eliminatedRole === 'shooter') state.shooterRevengePending = eliminatedId;
 
-        // === Wolf King mark death chain on day elimination ===
         if (eliminatedRole === 'wolf_king' && state.lastWolfKingMark) {
           const markedTarget = state.players.find(p => p.id === state.lastWolfKingMark && p.alive);
           if (markedTarget) {
@@ -411,9 +414,6 @@ export default {
           await env.GAME_KV.put(`room:${body.room_code}`, JSON.stringify(state));
           return json({ eliminatedPlayer: eliminatedName ? { name: eliminatedName, role: eliminatedRole } : null, voteTally: tally, winner }, 200, origin);
         }
-
-        // If shooter revenge pending, keep in day_results + let shooter act
-        // (Shooter sees revenge option on their eliminated screen)
         state.phase = 'day_results';
         state.dayVotes = [];
         await env.GAME_KV.put(`room:${body.room_code}`, JSON.stringify(state));
@@ -432,12 +432,11 @@ export default {
         state.nightActions = [];
         state.investigationResults = [];
         state.werewolfChat = [];
-        // Keep shooterRevengePending if still pending
         await env.GAME_KV.put(`room:${body.room_code}`, JSON.stringify(state));
         return json({ success: true, round: state.round }, 200, origin);
       }
 
-      // GET /api/night-progress?room_code=CODE
+      // GET /api/night-progress
       if (path === '/api/night-progress' && method === 'GET') {
         const code = url.searchParams.get('room_code') || '';
         const raw = await env.GAME_KV.get(`room:${code}`);
@@ -456,8 +455,7 @@ export default {
         }, 200, origin);
       }
 
-      // GET /api/check-restrictions?room_code=CODE&player_id=X
-      // Returns info about doctor restrictions for display
+      // GET /api/check-restrictions
       if (path === '/api/check-restrictions' && method === 'GET') {
         const code = url.searchParams.get('room_code') || '';
         const playerId = parseInt(url.searchParams.get('player_id') || '0');
@@ -488,7 +486,7 @@ export default {
         return json({ success: true }, 200, origin);
       }
 
-      // GET /api/werewolf-chat?room_code=CODE&player_id=X
+      // GET /api/werewolf-chat
       if (path === '/api/werewolf-chat' && method === 'GET') {
         const code = url.searchParams.get('room_code') || '';
         const playerId = parseInt(url.searchParams.get('player_id') || '0');
@@ -515,7 +513,7 @@ export default {
         return json({ success: true }, 200, origin);
       }
 
-      // GET /api/final-words?room_code=CODE
+      // GET /api/final-words
       if (path === '/api/final-words' && method === 'GET') {
         const code = url.searchParams.get('room_code') || '';
         const raw = await env.GAME_KV.get(`room:${code}`);
@@ -540,8 +538,17 @@ function checkWin(state) {
   return null;
 }
 
-function publicState(state) {
-  return {
+async function handleGetRoom(path, env, origin) {
+  const code = path.replace('/api/rooms/', '');
+  const raw = await env.GAME_KV.get(`room:${code}`);
+  if (!raw) return json({ error: 'Room not found' }, 404, origin);
+  const state = JSON.parse(raw);
+  const now = Date.now();
+  const onlinePlayers = state.players.map(p => ({
+    ...p,
+    online: p.online && (now - (p.lastHeartbeat || 0)) < DEFAULT_HEARTBEAT_TIMEOUT,
+  }));
+  return json({
     roomCode: state.roomCode, phase: state.phase, round: state.round,
     winner: state.winner, playerCount: state.players.length,
     aliveCount: state.players.filter(p => p.alive).length,
@@ -550,9 +557,22 @@ function publicState(state) {
     phaseStartedAt: state.phaseStartedAt,
     phaseDuration: state.phaseDuration,
     finalWords: Object.values(state.finalWords || {}),
-    players: state.players.map(p => ({ id: p.id, name: p.name, alive: p.alive })),
+    players: state.players.map(p => ({
+      id: p.id, name: p.name, alive: p.alive,
+      online: p.online && (now - (p.lastHeartbeat || 0)) < DEFAULT_HEARTBEAT_TIMEOUT,
+      role: state.phase !== 'lobby' && !p.alive ? p.role : undefined,
+    })),
     shooterRevengePending: !!state.shooterRevengePending,
-  };
+    roles: state.phase !== 'lobby' ? getRoleDistribution(state) : null,
+  }, 200, origin);
+}
+
+function getRoleDistribution(state) {
+  const counts = { werewolf: 0, wolf_king: 0, seer: 0, doctor: 0, shooter: 0, villager: 0 };
+  state.players.forEach(p => {
+    if (p.role && counts[p.role] !== undefined) counts[p.role]++;
+  });
+  return counts;
 }
 
 function generateToken() {
