@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Mafia: The Automated Assembly</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <link rel="stylesheet" href="css/style.css">
   <style>
     /* Projector-optimized: large text, high contrast */
@@ -21,7 +21,7 @@
     .config-row label { min-width: 140px; color: var(--text-secondary); }
     .config-row input { flex: 1; padding: 8px 12px; background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text-primary); }
     .elimination-result { font-size: 2rem; text-align: center; padding: 20px; margin: 16px 0; }
-    .qrcode-container { display: flex; justify-content: center; margin: 20px 0; }
+    .qrcode-container { display: flex; justify-content: center; margin: 20px 0; min-height: 236px; }
     .qrcode-container img, .qrcode-container canvas { border: 8px solid white; border-radius: 12px; }
   </style>
 </head>
