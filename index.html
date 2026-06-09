@@ -295,9 +295,9 @@ async function createRoom() {
     const qrDiv = document.getElementById('qrcode');
     qrDiv.innerHTML = '';
     const baseUrl = window.location.origin + window.location.pathname.replace(/\/?index\.html$/, '').replace(/\/?$/, '');
-    // Fix: if baseUrl is just the domain root (custom domain), add the repo path
+    // Fix: if baseUrl ends with the repo path (GitHub Pages), strip it for custom domain
     const repoPath = '/mafia-automated-assembly';
-    const playerUrl = (baseUrl === window.location.origin ? window.location.origin + repoPath : baseUrl) + '/player.html?room=' + roomCode;
+    const playerUrl = (baseUrl.endsWith(repoPath) ? window.location.origin : baseUrl) + '/player.html?room=' + roomCode;
     if (typeof QRCode !== 'undefined') {
       new QRCode(qrDiv, { text: playerUrl, width: 180, height: 180 });
     } else {
