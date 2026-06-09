@@ -69,7 +69,7 @@ alter table player_roles enable row level security;
 create policy "Player can read own role"
   on player_roles for select
   using (
-    auth.uid() = (select user_id from players where id = player_id)
+    auth.uid()::text = (select user_id from players where id = player_id)
   );
 
 -- Edge Function (service_role) can insert all roles
