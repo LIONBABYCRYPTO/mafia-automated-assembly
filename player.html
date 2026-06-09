@@ -73,6 +73,7 @@
     <!-- NIGHT ACTION SCREEN -->
     <div id="nightScreen" class="night-screen hidden">
       <h2 id="nightTitle">🌙 Night Falls</h2>
+      <div id="nightTimer" class="timer" style="text-align:center;font-size:1.2rem;margin-bottom:8px;display:none;">--</div>
       <p style="color:var(--text-secondary);" id="nightRoleDesc">Close your eyes...</p>
       <div id="nightActionArea"></div>
       <button class="btn btn-primary btn-lg hidden" id="nightConfirmBtn" onclick="confirmNightAction()">✅ Confirm Action</button>
@@ -81,6 +82,7 @@
 
     <!-- DAY SCREEN -->
     <div id="dayScreen" class="day-screen hidden">
+      <div id="dayTimer" class="timer" style="text-align:center;font-size:1.2rem;margin-bottom:8px;display:none;">--</div>
       <div id="discussionPhase">
         <h2>☀️ Day</h2>
         <p id="nightResult" style="font-size:1.2rem;margin:16px 0;"></p>
@@ -97,6 +99,23 @@
     <!-- RESULT SCREEN -->
     <div id="resultScreen" class="eliminated-overlay hidden">
       <div id="eliminatedReveal"></div>
+      <!-- Final words form for eliminated players -->
+      <div id="finalWordsForm" class="hidden" style="margin-top:16px;">
+        <h3>💬 Final Words</h3>
+        <input type="text" id="finalWordsInput" class="lobby-input" placeholder="Your last message..." maxlength="100" style="width:100%;margin:8px 0;">
+        <button class="btn btn-primary btn-sm" onclick="submitFinalWords()">Send</button>
+        <p id="finalWordsSent" class="hidden" style="color:var(--accent-villager);margin-top:8px;">✅ Sent!</p>
+      </div>
+    </div>
+
+    <!-- WEREWOLF CHAT -->
+    <div id="werewolfChat" class="hidden" style="margin-top:12px;padding:12px;border-radius:var(--radius-sm);background:rgba(231,76,60,0.08);border:1px solid var(--accent-werewolf);">
+      <h4 style="text-align:center;margin-bottom:8px;">🐺 Wolf Den</h4>
+      <div id="wolfChatMessages" style="max-height:120px;overflow-y:auto;font-size:0.85rem;margin-bottom:8px;"></div>
+      <div style="display:flex;gap:6px;">
+        <input type="text" id="wolfChatInput" class="lobby-input" placeholder="Message..." maxlength="100" style="flex:1;font-size:0.9rem;">
+        <button class="btn btn-primary btn-sm" onclick="sendWolfChat()">Send</button>
+      </div>
     </div>
 
     <!-- VICTORY SCREEN -->
@@ -133,6 +152,37 @@
       return fetch(API_URL + path, opts).then(function(r) { return r.json(); });
     }
 
+    function esc(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+    // ── Sound effects ──
+    var audioCtx = null;
+    function initAudio() { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+    function playNightJingle() {
+      initAudio(); if (!audioCtx) return;
+      var o = audioCtx.createOscillator(), g = audioCtx.createGain();
+      o.type = 'sine'; o.frequency.setValueAtTime(220, audioCtx.currentTime);
+      o.frequency.linearRampToValueAtTime(330, audioCtx.currentTime + 0.3);
+      g.gain.setValueAtTime(0.12, audioCtx.currentTime); g.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 1.2);
+      o.connect(g); g.connect(audioCtx.destination); o.start(); o.stop(audioCtx.currentTime + 1.2);
+    }
+    function playDrumroll() {
+      initAudio(); if (!audioCtx) return;
+      for (var t = 0; t < 40; t++) {
+        var s = audioCtx.createBufferSource(), b = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.02, audioCtx.sampleRate), c = b.getChannelData(0);
+        for (var j = 0; j < c.length; j++) c[j] = (Math.random() * 2 - 1) * (1 - j / c.length) * (0.02 + t / 40 * 0.12);
+        s.buffer = b; s.connect(audioCtx.destination); s.start(audioCtx.currentTime + t * 0.04); s.stop(audioCtx.currentTime + t * 0.04 + 0.03);
+      }
+    }
+    function playVictory() {
+      initAudio(); if (!audioCtx) return;
+      [523, 659, 784, 1047].forEach(function(f, i) {
+        var o = audioCtx.createOscillator(), g = audioCtx.createGain();
+        o.type = 'triangle'; o.frequency.setValueAtTime(f, audioCtx.currentTime + i * 0.3);
+        g.gain.setValueAtTime(0.1, audioCtx.currentTime + i * 0.3); g.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + i * 0.3 + 0.6);
+        o.connect(g); g.connect(audioCtx.destination); o.start(audioCtx.currentTime + i * 0.3); o.stop(audioCtx.currentTime + i * 0.3 + 0.7);
+      });
+    }
+
     document.getElementById('joinRoomCode').textContent = roomCode || '---';
     if (!roomCode) { document.getElementById('joinError').textContent = 'No room code in URL'; document.getElementById('joinError').classList.remove('hidden'); }
 
@@ -148,7 +198,6 @@
         if (data && data.id) {
           playerId = data.id;
           playerToken = data.player_token;
-          localStorage.setItem('mafia_player_' + roomCode, JSON.stringify({ playerId: playerId, playerToken: playerToken }));
           document.getElementById('joinScreen').classList.add('hidden');
           document.getElementById('waitingScreen').classList.remove('hidden');
           startPolling();
@@ -171,6 +220,7 @@
       pollGameState();
     }
 
+    var playerName = '';
     function pollGameState() {
       if (!roomCode) return;
       api('/api/rooms/' + roomCode).then(function(room) {
@@ -204,6 +254,7 @@
           document.getElementById('nightScreen').classList.add('hidden');
           document.getElementById('dayScreen').classList.add('hidden');
           document.getElementById('resultScreen').classList.add('hidden');
+          if (window.wolfChatInterval) { clearInterval(window.wolfChatInterval); window.wolfChatInterval = null; }
 
           switch (room.phase) {
             case 'night': showNightPhase(room.round); break;
@@ -213,6 +264,9 @@
           }
           currentRound = room.round || 1;
         }
+
+        // Update timer every poll
+        if (playerRole) updateTimer(room);
 
         // Check if player is dead
         if (playerId) {
@@ -268,6 +322,11 @@
       document.getElementById('dayScreen').classList.add('hidden');
       document.getElementById('resultScreen').classList.add('hidden');
       document.getElementById('nightScreen').classList.remove('hidden');
+      playNightJingle();
+
+      var emojiMap = { werewolf: '🐺', villager: '🧑‍🌾', seer: '🔮', doctor: '💉' };
+      var nameMap = { werewolf: 'Werewolf', villager: 'Villager', seer: 'Seer', doctor: 'Doctor' };
+      var badgeHtml = '<div style="text-align:center;font-size:0.9rem;margin-bottom:4px;opacity:0.7;">Your role: ' + emojiMap[playerRole] + ' <strong>' + nameMap[playerRole] + '</strong></div>';
 
       var roleSpecific = {
         werewolf: { emoji: '🐺', title: '🌙 Night ' + round + ' — Choose your victim', desc: 'Select a player to eliminate', actions: ['kill'] },
@@ -277,8 +336,20 @@
       };
 
       var config = roleSpecific[playerRole] || roleSpecific.villager;
-      document.getElementById('nightTitle').textContent = config.title;
+      document.getElementById('nightTitle').innerHTML = badgeHtml + config.title;
       document.getElementById('nightRoleDesc').textContent = config.desc;
+
+      // Show werewolf chat for wolves
+      var wc = document.getElementById('werewolfChat');
+      if (playerRole === 'werewolf') {
+        wc.classList.remove('hidden');
+        pollWolfChat();
+        if (window.wolfChatInterval) clearInterval(window.wolfChatInterval);
+        window.wolfChatInterval = setInterval(pollWolfChat, 3000);
+      } else {
+        wc.classList.add('hidden');
+        if (window.wolfChatInterval) clearInterval(window.wolfChatInterval);
+      }
 
       if (config.actions.length === 0) {
         document.getElementById('nightActionArea').innerHTML = '<p style="font-size:3rem;margin:30px 0;">💤</p>';
@@ -442,17 +513,74 @@
       document.getElementById('nightScreen').classList.add('hidden');
       document.getElementById('dayScreen').classList.add('hidden');
       document.getElementById('resultScreen').classList.remove('hidden');
-      document.getElementById('eliminatedReveal').innerHTML = '<div class="big">💀</div><h2>You have been eliminated</h2><p style="color:var(--text-secondary);margin-top:8px;">You can still watch the game unfold.</p>';
+      document.getElementById('eliminatedReveal').innerHTML = '<div class="big">💀</div><h2>You have been eliminated</h2><p style="color:var(--text-secondary);margin-top:8px;">You can still watch the game unfold.</p><p style="margin-top:8px;font-size:0.9rem;color:var(--text-secondary);">Your role was: <strong>' + (nameMap ? nameMap[playerRole] || playerRole : playerRole) + '</strong></p>';
+      document.getElementById('finalWordsForm').classList.remove('hidden');
     }
 
     // ── VICTORY ──
     function showVictory(winner) {
       if (pollInterval) clearInterval(pollInterval);
+      playVictory();
       var divs = document.querySelectorAll('.player-view > div');
       for (var i = 0; i < divs.length; i++) { divs[i].classList.add('hidden'); }
       document.getElementById('victoryScreen').classList.remove('hidden');
       document.getElementById('playerVictoryEmoji').textContent = winner === 'werewolf' ? '🐺' : '🏘️';
       document.getElementById('playerVictoryTitle').textContent = winner === 'werewolf' ? 'Werewolves Win!' : 'Village Wins!';
+    }
+    // ── TIMER SYNC ──
+    function updateTimer(room) {
+      var timerEl = document.getElementById('nightTimer') || document.getElementById('dayTimer');
+      if (!timerEl) return;
+      if (!room.phaseStartedAt || !room.phaseDuration || room.phaseDuration === 0) {
+        timerEl.style.display = 'none';
+        return;
+      }
+      timerEl.style.display = 'block';
+      var elapsed = Math.floor((Date.now() - room.phaseStartedAt) / 1000);
+      var remaining = Math.max(0, room.phaseDuration - elapsed);
+      var mins = Math.floor(remaining / 60);
+      var secs = remaining % 60;
+      timerEl.textContent = mins + ':' + (secs < 10 ? '0' : '') + secs;
+      if (remaining <= 10) timerEl.style.color = 'var(--accent-werewolf)';
+      else timerEl.style.color = 'var(--text-primary)';
+    }
+
+    // ── WEREWOLF CHAT ──
+    function sendWolfChat() {
+      var input = document.getElementById('wolfChatInput');
+      var text = input.value.trim();
+      if (!text) return;
+      input.disabled = true;
+      api('/api/werewolf-chat', 'POST', { room_code: roomCode, player_id: playerId, text: text }).then(function(data) {
+        if (data && data.success) { input.value = ''; pollWolfChat(); }
+        input.disabled = false;
+      }).catch(function() { input.disabled = false; });
+    }
+    function pollWolfChat() {
+      api('/api/werewolf-chat?room_code=' + roomCode + '&player_id=' + playerId).then(function(data) {
+        if (!data || !data.messages) return;
+        var el = document.getElementById('wolfChatMessages');
+        if (!el) return;
+        el.innerHTML = data.messages.map(function(m) {
+          return '<div><strong>' + esc(m.playerName) + ':</strong> ' + esc(m.text) + '</div>';
+        }).join('');
+        el.scrollTop = el.scrollHeight;
+      }).catch(function() {});
+    }
+
+    // ── FINAL WORDS ──
+    function submitFinalWords() {
+      var input = document.getElementById('finalWordsInput');
+      var text = input.value.trim();
+      if (!text) return;
+      input.disabled = true;
+      api('/api/final-words', 'POST', { room_code: roomCode, player_id: playerId, text: text }).then(function(data) {
+        if (data && data.success) {
+          document.getElementById('finalWordsSent').classList.remove('hidden');
+          document.getElementById('finalWordsForm').querySelector('button').disabled = true;
+          input.disabled = true;
+        }
+      }).catch(function() { input.disabled = false; });
     }
   </script>
 </body>

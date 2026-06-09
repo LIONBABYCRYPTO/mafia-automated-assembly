@@ -116,6 +116,50 @@
       return fetch(API_URL + path, opts).then(function(r) { return r.json(); });
     }
 
+    function esc(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+    // ── Sound effects via Web Audio API ──
+    var audioCtx = null;
+    function initAudio() { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+    function playNightJingle() {
+      initAudio(); if (!audioCtx) return;
+      var o = audioCtx.createOscillator(), g = audioCtx.createGain();
+      o.type = 'sine'; o.frequency.setValueAtTime(220, audioCtx.currentTime);
+      o.frequency.linearRampToValueAtTime(330, audioCtx.currentTime + 0.3);
+      o.frequency.linearRampToValueAtTime(440, audioCtx.currentTime + 0.6);
+      g.gain.setValueAtTime(0.15, audioCtx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 1.5);
+      o.connect(g); g.connect(audioCtx.destination); o.start(); o.stop(audioCtx.currentTime + 1.5);
+    }
+    function playDrumroll() {
+      initAudio(); if (!audioCtx) return;
+      var duration = 2, interval = 0.04, steps = duration / interval;
+      for (var i = 0; i < steps; i++) {
+        (function(t) {
+          var noise = audioCtx.createBufferSource();
+          var buf = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.02, audioCtx.sampleRate);
+          var d = buf.getChannelData(0);
+          for (var j = 0; j < d.length; j++) d[j] = (Math.random() * 2 - 1) * (1 - j / d.length);
+          noise.buffer = buf; noise.connect(audioCtx.destination);
+          var vol = 0.02 + (t / duration) * 0.15;
+          noise.connect(audioCtx.destination);
+          noise.start(audioCtx.currentTime + t);
+          noise.stop(audioCtx.currentTime + t + 0.03);
+        })(i * interval);
+      }
+    }
+    function playVictory() {
+      initAudio(); if (!audioCtx) return;
+      var notes = [523, 659, 784, 1047, 784, 1047, 1319];
+      notes.forEach(function(freq, i) {
+        var o = audioCtx.createOscillator(), g = audioCtx.createGain();
+        o.type = 'triangle'; o.frequency.setValueAtTime(freq, audioCtx.currentTime + i * 0.3);
+        g.gain.setValueAtTime(0.12, audioCtx.currentTime + i * 0.3);
+        g.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + i * 0.3 + 0.6);
+        o.connect(g); g.connect(audioCtx.destination); o.start(audioCtx.currentTime + i * 0.3); o.stop(audioCtx.currentTime + i * 0.3 + 0.7);
+      });
+    }
+
     function showToast(msg) {
       var t = document.createElement('div');
       t.className = 'toast';
@@ -219,7 +263,7 @@
         if (!players || !players.length) { document.getElementById('playerCountDisplay').textContent = '0'; return; }
         document.getElementById('playerCountDisplay').textContent = players.length;
         document.getElementById('lobbyPlayerDots').innerHTML = players.map(function(p) {
-          return '<div class="alive-dot ' + (p.alive ? '' : 'dead') + '" title="' + p.name + '">' + (p.alive ? '' : '💀') + '</div>';
+          return '<div style="cursor:default;padding:4px 8px;border-radius:12px;background:var(--bg-surface);border:1px solid var(--border);font-size:0.85rem;display:inline-flex;align-items:center;gap:4px;">' + (p.alive ? '🟢' : '💀') + esc(p.name) + '</div>';
         }).join('');
         document.getElementById('startGameBtn').disabled = players.length < 6;
         updateAliveDots();
@@ -263,6 +307,8 @@
     // ── PHASES ──
     function startNightPhase() {
       clearInterval(phaseTimer);
+      if (window.voteTallyInterval) clearInterval(window.voteTallyInterval);
+      playNightJingle();
       document.getElementById('hostControls').style.display = 'block';
       document.getElementById('hostControls').querySelector('#phaseActionBtn').textContent = '⏰ End Night Phase';
       document.getElementById('hostControls').querySelector('#phaseActionBtn').onclick = function() { processNight(); };
@@ -342,10 +388,26 @@
       document.getElementById('hostControls').querySelector('#phaseActionBtn').textContent = '📊 End Vote & Tally';
       document.getElementById('hostControls').querySelector('#phaseActionBtn').onclick = function() { processDay(); };
       document.getElementById('nightHostContent').classList.add('hidden');
-      document.getElementById('gameContent').innerHTML = '<p style="color:var(--text-secondary);text-align:center;">🗳️ Players are voting now...</p>';
+      document.getElementById('gameContent').innerHTML = '<p style="color:var(--text-secondary);text-align:center;">🗳️ Players are voting now...</p><div id="liveVoteDisplay" style="margin-top:12px;max-width:400px;margin-left:auto;margin-right:auto;"><p style="color:var(--text-secondary);font-size:0.9rem;">0 votes cast</p></div>';
       startTimer(parseInt(document.getElementById('voteDuration').value) || 60);
       // Update phase in backend so players see voting
-      api('/api/update-phase', 'POST', { room_code: roomCode, phase: 'day_voting' }).catch(function() {});
+      api('/api/update-phase', 'POST', { room_code: roomCode, phase: 'day_voting', duration: parseInt(document.getElementById('voteDuration').value) || 60 }).catch(function() {});
+      // Start live vote tally polling
+      if (window.voteTallyInterval) clearInterval(window.voteTallyInterval);
+      window.voteTallyInterval = setInterval(function() {
+        api('/api/vote-tally?room_code=' + roomCode).then(function(data) {
+          if (!data || !data.tally) return;
+          var display = document.getElementById('liveVoteDisplay');
+          if (!display) return;
+          var maxV = data.tally.length > 0 ? Math.max.apply(null, data.tally.map(function(t) { return t.votes; })) : 1;
+          var html = '<p style="color:var(--text-secondary);font-size:0.9rem;">' + data.totalVotes + '/' + data.totalPlayers + ' votes cast</p>';
+          for (var i = 0; i < data.tally.length; i++) {
+            var pct = (data.tally[i].votes / maxV * 100);
+            html += '<div style="display:flex;align-items:center;gap:8px;margin:4px 0;"><span style="min-width:80px;text-align:right;font-size:0.9rem;">' + esc(data.tally[i].playerName) + '</span><div style="flex:1;height:20px;background:var(--bg-surface);border-radius:4px;overflow:hidden;"><div style="height:100%;width:' + pct + '%;background:linear-gradient(90deg,var(--accent-gold),var(--accent-werewolf));border-radius:4px;transition:width 0.5s;"></div></div><span style="min-width:30px;font-size:0.9rem;color:var(--text-secondary);">' + data.tally[i].votes + '</span></div>';
+          }
+          display.innerHTML = html;
+        }).catch(function() {});
+      }, 1500);
     }
 
     // ── HANDLERS ──
@@ -355,6 +417,7 @@
       var round = payload.round || currentRound;
       var html = '<div class="card fade-in"><h2>🌙 Night ' + round + ' Results</h2>';
       if (payload.killedPlayer) {
+        playDrumroll();
         html += '<div class="night-summary" style="background:rgba(231,76,60,0.15);border:2px solid var(--accent-werewolf);">☠️ <strong>' + payload.killedPlayer.name + '</strong> was attacked!</div>';
       } else if (payload.saved) {
         html += '<div class="night-summary" style="background:rgba(255,107,157,0.15);border:2px solid var(--accent-doctor);">💉 The Doctor saved someone!</div>';
@@ -398,7 +461,10 @@
       }
 
       if (eliminated) {
-        html += '<div class="phase-banner phase-result elimination-flash fade-in" style="margin-top:16px;">⚖️ <strong>' + eliminated.name + '</strong> eliminated!<br><span style="font-size:1.4rem;margin-top:8px;display:block;">Role: <strong>' + eliminated.role.charAt(0).toUpperCase() + eliminated.role.slice(1) + '</strong></span></div>';
+        playDrumroll();
+        var alignment = eliminated.role === 'werewolf' ? '🐺 Werewolf' : '🧑‍🌾 Villager';
+        var alignColor = eliminated.role === 'werewolf' ? 'var(--accent-werewolf)' : 'var(--accent-villager)';
+        html += '<div class="phase-banner phase-result elimination-flash fade-in" style="margin-top:16px;">⚖️ <strong>' + eliminated.name + '</strong> eliminated!<br><span style="font-size:1.4rem;margin-top:8px;display:block;">Alignment: <strong style="color:' + alignColor + ';">' + alignment + '</strong></span></div>';
       } else {
         html += '<div class="elimination-result" style="color:var(--accent-gold);">⚖️ No one was eliminated.</div>';
       }
@@ -425,6 +491,8 @@
     function handleVictory(payload) {
       clearInterval(phaseTimer);
       if (actionPollInterval) clearInterval(actionPollInterval);
+      if (window.voteTallyInterval) clearInterval(window.voteTallyInterval);
+      playVictory();
       document.getElementById('gameView').classList.add('hidden');
       document.getElementById('victoryView').classList.remove('hidden');
       document.getElementById('hostControls').style.display = 'none';
@@ -436,6 +504,18 @@
       if (payload.eliminatedPlayer) {
         document.getElementById('victorySubtitle').textContent += ' ' + payload.eliminatedPlayer.name + ' was the last elimination.';
       }
+      // Show final words
+      api('/api/final-words?room_code=' + roomCode).then(function(fw) {
+        if (fw && fw.finalWords) {
+          var fwArr = Object.values(fw.finalWords);
+          if (fwArr.length > 0) {
+            var html = '<div class="card" style="margin-top:16px;text-align:center;"><h3>💬 Final Words</h3>';
+            fwArr.forEach(function(w) { html += '<p><strong>' + esc(w.name) + ':</strong> ' + esc(w.text) + '</p>'; });
+            html += '</div>';
+            document.getElementById('victorySubtitle').innerHTML += html;
+          }
+        }
+      }).catch(function() {});
     }
 
     function updateAliveDots() {
@@ -449,6 +529,15 @@
         if (dots) {
           dots.innerHTML = players.map(function(p) {
             return '<div class="alive-dot ' + (p.alive ? '' : 'dead') + '" title="' + p.name + '">' + (p.alive ? '' : '💀') + '</div>';
+          }).join('');
+        }
+        // Show name list
+        var nameList = document.getElementById('playerNameList');
+        if (nameList) {
+          nameList.innerHTML = players.map(function(p) {
+            var bg = p.alive ? '' : 'rgba(231,76,60,0.2)';
+            var deco = p.alive ? '' : 'line-through';
+            return '<span style="padding:4px 10px;border-radius:12px;background:' + bg + ';font-size:0.85rem;text-decoration:' + deco + ';">' + esc(p.name) + '</span>';
           }).join('');
         }
       }).catch(function() {});
