@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mafia: The Automated Assembly</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    /* Projector-optimized: large text, high contrast */
+    .host-lobby { text-align: center; padding: 20px; }
+    .player-count-badge { font-size: 3rem; font-weight: 900; color: var(--accent-gold); }
+    .game-log { max-height: 300px; overflow-y: auto; margin: 16px 0; padding: 16px; background: var(--bg-surface); border-radius: var(--radius); }
+    .game-log p { margin: 4px 0; font-size: 1.1rem; }
+    .alive-bar { display: flex; gap: 6px; justify-content: center; margin: 20px 0; flex-wrap: wrap; }
+    .alive-dot { width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--accent-villager); }
+    .alive-dot.dead { border-color: var(--danger); opacity: 0.3; }
+    .setup-panel { max-width: 500px; margin: 0 auto; }
+    .config-row { display: flex; gap: 12px; align-items: center; margin: 12px 0; }
+    .config-row label { min-width: 140px; color: var(--text-secondary); }
+    .config-row input { flex: 1; padding: 8px 12px; background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text-primary); }
+    .elimination-result { font-size: 2rem; text-align: center; padding: 20px; margin: 16px 0; }
+    .qrcode-container { display: flex; justify-content: center; margin: 20px 0; }
+    .qrcode-container img, .qrcode-container canvas { border: 8px solid white; border-radius: 12px; }
+  </style>
+</head>
+<body>
+  <div class="host-container">
+    <!-- LOBBY VIEW -->
+    <div id="lobbyView" class="host-lobby">
+      <div class="room-header">
+        <h1>🎭 Mafia</h1>
+        <p style="color: var(--text-secondary); margin-bottom: 8px;">The Automated Assembly</p>
+        <div class="room-code" id="roomCodeDisplay">------</div>
+        <p style="font-size: 1.1rem;">Scan QR to join • Enter the code on your phone</p>
+      </div>
+
+      <div class="qrcode-container" id="qrcodeContainer"></div>
+      <div id="qrcodePlaceholder" style="width:220px;height:220px;margin:0 auto;background:var(--bg-surface);border-radius:12px;display:flex;align-items:center;justify-content:center;color:var(--text-secondary);">
+        Generating QR…
+      </div>
+
+      <div class="player-count">
+        Players: <span id="playerCountDisplay">0</span>
+      </div>
+
+      <div class="alive-bar" id="lobbyPlayerDots"></div>
+
+      <div class="setup-panel card">
+        <h3>⚙️ Game Setup</h3>
+        <div class="config-row">
+          <label>Night (sec)</label>
+          <input type="number" id="nightDuration" value="60" min="20" max="180">
+        </div>
+        <div class="config-row">
+          <label>Discussion (sec)</label>
+          <input type="number" id="discussionDuration" value="180" min="30" max="300">
+        </div>
+        <div class="config-row">
+          <label>Vote (sec)</label>
+          <input type="number" id="voteDuration" value="60" min="20" max="120">
+        </div>
+      </div>
+
+      <button class="btn btn-success btn-lg" id="startGameBtn" disabled onclick="startGame()">
+        🚀 Start Game
+      </button>
+      <p style="color: var(--text-secondary); font-size: 0.9rem; margin-top: 8px;">
+        Need at least 6 players
+      </p>
+    </div>
+
+    <!-- GAME VIEW -->
+    <div id="gameView" class="hidden">
+      <!-- Phase Banner -->
+      <div id="phaseBanner" class="phase-banner phase-night">🌙 Night Falls</div>
+
+      <!-- Timer -->
+      <div class="timer" id="timerDisplay">--</div>
+
+      <!-- Game Log / Results -->
+      <div id="gameContent"></div>
+
+      <!-- Controls -->
+      <div id="hostControls" class="card" style="text-align:center;">
+        <button class="btn btn-primary btn-lg" id="phaseActionBtn">Continue</button>
+      </div>
+
+      <!-- Alive Player Dots -->
+      <div style="text-align:center;margin-top:16px;">
+        <p style="color:var(--text-secondary);font-size:0.9rem;">🟢 Alive Players</p>
+        <div class="alive-bar" id="gamePlayerDots"></div>
+      </div>
+    </div>
+
+    <!-- VICTORY VIEW -->
+    <div id="victoryView" class="hidden victory-screen">
+      <div class="emoji-big" id="victoryEmoji">🏆</div>
+      <h1 id="victoryTitle">Village Wins!</h1>
+      <p id="victorySubtitle" style="font-size: 1.4rem; color: var(--text-secondary);"></p>
+      <button class="btn btn-primary btn-lg" style="margin-top: 30px;" onclick="location.reload()">
+        🎮 New Game
+      </button>
+    </div>
+  </div>
+
+  <script src="js/supabase-client.js"></script>
+  <script src="js/game-state.js"></script>
+  <script>
+    // ==========================================
+    // HOST CONTROLLER
+    // ==========================================
+    let roomCode = null
+    let roomId = null
+    let currentPhase = 'lobby'
+    let currentRound = 0
+    let phaseTimer = null
+    let aliveCount = 0
+    let voteTallyData = {}
+    let eliminatedList = []
+
+    // Generate room code
+    function generateRoomCode() {
+      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+      let code = ''
+      for (let i = 0; i < 6; i++) code += chars.charAt(Math.floor(Math.random() * chars.length))
+      return code
+    }
+
+    window.addEventListener('DOMContentLoaded', async () => {
+      roomCode = generateRoomCode()
+      document.getElementById('roomCodeDisplay').textContent = roomCode
+
+      // Create room
+      const { data, error } = await supabaseClient
+        .from('rooms')
+        .insert({ room_code: roomCode, host_id: 'host', phase: 'lobby' })
+        .select()
+        .single()
+
+      if (error) {
+        console.error('Failed to create room:', error)
+        return
+      }
+      roomId = data.id
+
+      // Generate QR code
+      const playerUrl = `${window.location.origin}${window.location.pathname.replace(/\/[^/]*$/, '/player.html')}?room=${roomCode}`
+      const qrContainer = document.getElementById('qrcodeContainer')
+      const qrPlaceholder = document.getElementById('qrcodePlaceholder')
+      qrPlaceholder.style.display = 'none'
+
+      new QRCode(qrContainer, {
+        text: playerUrl,
+        width: 220,
+        height: 220,
+        colorDark: '#000000',
+        colorLight: '#ffffff',
+        correctLevel: QRCode.CorrectLevel.H
+      })
+
+      // Subscribe to realtime player changes
+      supabaseClient
+        .channel(`room-players:${roomCode}`)
+        .on('postgres_changes',
+          { event: '*', schema: 'public', table: 'players', filter: `room_code=eq.${roomCode}` },
+          updatePlayerList
+        )
+        .subscribe()
+
+      // Subscribe to broadcast (phase changes)
+      const channel = getRoomChannel(roomCode)
+      channel.on('broadcast', { event: 'night_result' }, (msg) => handleNightResult(msg.payload))
+      channel.on('broadcast', { event: 'day_result' }, (msg) => handleDayResult(msg.payload))
+      channel.on('broadcast', { event: 'victory' }, (msg) => handleVictory(msg.payload))
+      channel.subscribe()
+
+      // Initial player load
+      await updatePlayerList()
+    })
+
+    async function updatePlayerList() {
+      const { data: players } = await supabaseClient
+        .from('players')
+        .select('id, name, alive')
+        .eq('room_code', roomCode)
+        .order('joined_at')
+
+      if (!players) return
+
+      const count = players.length
+      const alive = players.filter(p => p.alive).length
+      aliveCount = alive
+
+      document.getElementById('playerCountDisplay').textContent = count
+
+      // Player dots
+      const dotsContainer = document.getElementById('lobbyPlayerDots')
+      dotsContainer.innerHTML = players.map(p =>
+        `<div class="alive-dot ${p.alive ? '' : 'dead'}" title="${p.name}"></div>`
+      ).join('')
+
+      // Enable start if 6+
+      document.getElementById('startGameBtn').disabled = count < 6
+    }
+
+    // ==========================================
+    // GAME FLOW
+    // ==========================================
+    async function startGame() {
+      document.getElementById('lobbyView').classList.add('hidden')
+      document.getElementById('gameView').classList.remove('hidden')
+
+      const response = await fetch(
+        `${SUPABASE_URL}/functions/v1/assign-roles`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+          },
+          body: JSON.stringify({ room_code: roomCode })
+        }
+      )
+
+      const result = await response.json()
+      if (result.error) {
+        alert('Error starting game: ' + result.error)
+        return
+      }
+
+      setPhase('night', 1)
+    }
+
+    // Phase timer
+    function startTimer(seconds) {
+      clearInterval(phaseTimer)
+      const display = document.getElementById('timerDisplay')
+      let remaining = seconds
+
+      const update = () => {
+        const mins = Math.floor(remaining / 60)
+        const secs = remaining % 60
+        display.textContent = `${mins}:${secs.toString().padStart(2, '0')}`
+
+        if (remaining <= 10) {
+          display.className = 'timer urgent'
+        } else if (remaining <= 20) {
+          display.className = 'timer warning'
+        } else {
+          display.className = 'timer'
+        }
+
+        if (remaining <= 0) {
+          clearInterval(phaseTimer)
+          handlePhaseTimeout()
+        }
+        remaining--
+      }
+      update()
+      phaseTimer = setInterval(update, 1000)
+    }
+
+    function setPhase(phase, round) {
+      currentPhase = phase
+      currentRound = round
+      const banner = document.getElementById('phaseBanner')
+      const controls = document.getElementById('hostControls')
+
+      switch (phase) {
+        case 'night':
+          banner.className = 'phase-banner phase-night'
+          banner.textContent = `🌙 Night ${round} — Werewolves, choose your victim`
+          controls.querySelector('#phaseActionBtn').textContent = '⏰ End Night Phase'
+          controls.querySelector('#phaseActionBtn').onclick = () => processNight()
+          startTimer(parseInt(document.getElementById('nightDuration').value) || 60)
+          break
+
+        case 'day_discussion':
+          banner.className = 'phase-banner phase-day'
+          banner.textContent = `☀️ Day ${round} — Discuss!`
+          controls.querySelector('#phaseActionBtn').textContent = '🗳️ Start Voting'
+          controls.querySelector('#phaseActionBtn').onclick = () => startVotePhase()
+          startTimer(parseInt(document.getElementById('discussionDuration').value) || 180)
+          break
+
+        case 'day_vote':
+          banner.className = 'phase-banner phase-vote'
+          banner.textContent = `🗳️ Voting — Pick who to eliminate`
+          controls.querySelector('#phaseActionBtn').textContent = '📊 End Vote & Tally'
+          controls.querySelector('#phaseActionBtn').onclick = () => processDay()
+          startTimer(parseInt(document.getElementById('voteDuration').value) || 60)
+          break
+
+        case 'day_results':
+          banner.className = 'phase-banner phase-result'
+          banner.textContent = `⚖️ Verdict`
+          controls.innerHTML = '<button class="btn btn-primary btn-lg" onclick="continueToNight()">🌙 Continue to Night</button>'
+          break
+      }
+    }
+
+    function handlePhaseTimeout() {
+      const phase = currentPhase
+      if (phase === 'night') processNight()
+      else if (phase === 'day_discussion') startVotePhase()
+      else if (phase === 'day_vote') processDay()
+    }
+
+    // ==========================================
+    // EDGE FUNCTION CALLS
+    // ==========================================
+    async function processNight() {
+      clearInterval(phaseTimer)
+      document.getElementById('timerDisplay').textContent = '--'
+      document.getElementById('hostControls').innerHTML = '<p style="color:var(--text-secondary);">Resolving night actions…</p>'
+
+      const response = await fetch(
+        `${SUPABASE_URL}/functions/v1/process-night`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+          },
+          body: JSON.stringify({ room_code: roomCode })
+        }
+      )
+    }
+
+    function startVotePhase() {
+      clearInterval(phaseTimer)
+      document.getElementById('timerDisplay').textContent = '--'
+      setPhase('day_vote', currentRound)
+    }
+
+    async function processDay() {
+      clearInterval(phaseTimer)
+      document.getElementById('timerDisplay').textContent = '--'
+      document.getElementById('hostControls').innerHTML = '<p style="color:var(--text-secondary);">Tallying votes…</p>'
+
+      const response = await fetch(
+        `${SUPABASE_URL}/functions/v1/process-day`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+          },
+          body: JSON.stringify({ room_code: roomCode })
+        }
+      )
+    }
+
+    async function continueToNight() {
+      // Edge Function already transitions, just update UI
+      setPhase('night', currentRound + 1)
+    }
+
+    // ==========================================
+    // BROADCAST HANDLERS
+    // ==========================================
+    function handleNightResult(payload) {
+      const content = document.getElementById('gameContent')
+      const round = payload.round
+
+      let html = `<div class="card fade-in"><h2>🌙 Night ${round} Results</h2>`
+
+      if (payload.killedPlayer) {
+        html += `<div class="elimination-result elimination-flash" style="color: var(--danger);">
+          ☠️ <strong>${payload.killedPlayer.name}</strong> was attacked during the night!
+        </div>`
+        eliminatedList.push(payload.killedPlayer.name)
+      } else if (payload.saved) {
+        html += `<div class="elimination-result" style="color: var(--accent-doctor);">
+          💉 The Doctor saved someone! A brave player survived the night.
+        </div>`
+      } else {
+        html += `<div class="elimination-result" style="color: var(--text-secondary);">
+          🌅 The night passed peacefully. No one was attacked.
+        </div>`
+      }
+
+      html += '</div>'
+      content.innerHTML = html
+
+      updateAliveDots()
+      setPhase('day_discussion', round)
+    }
+
+    function handleDayResult(payload) {
+      const content = document.getElementById('gameContent')
+
+      let html = `<div class="card fade-in"><h2>☀️ Day ${payload.round - 1} Results</h2>`
+
+      if (payload.voteTally) {
+        html += '<h3>📊 Vote Tally</h3>'
+        // Fetch player names for tally
+        setTimeout(async () => {
+          const { data: players } = await supabaseClient
+            .from('players')
+            .select('id, name')
+            .eq('room_code', roomCode)
+
+          const nameMap = {}
+          if (players) players.forEach(p => nameMap[p.id] = p.name)
+
+          const tallyDiv = document.getElementById('voteTallyDisplay')
+          if (tallyDiv) {
+            const maxVotes = Math.max(...Object.values(payload.voteTally), 1)
+            tallyDiv.innerHTML = Object.entries(payload.voteTally)
+              .sort((a, b) => b[1] - a[1])
+              .map(([id, count]) => `
+                <div class="vote-bar-container">
+                  <div class="vote-bar-label">
+                    <span>${nameMap[id] || 'Player ' + id}</span>
+                    <span>${count} vote${count > 1 ? 's' : ''}</span>
+                  </div>
+                  <div class="vote-bar">
+                    <div class="vote-bar-fill" style="width: ${(count / maxVotes) * 100}%"></div>
+                  </div>
+                </div>
+              `).join('')
+          }
+        }, 100)
+
+        html += `<div id="voteTallyDisplay"></div>`
+      }
+
+      if (payload.eliminatedPlayer) {
+        html += `<div class="phase-banner phase-result elimination-flash fade-in" style="margin-top:16px;">
+          ⚖️ <strong>${payload.eliminatedPlayer.name}</strong> was eliminated!<br>
+          <span style="font-size:1.4rem;margin-top:8px;display:block;">
+            Role: <strong>${payload.eliminatedPlayer.role.charAt(0).toUpperCase() + payload.eliminatedPlayer.role.slice(1)}</strong>
+          </span>
+        </div>`
+        eliminatedList.push(payload.eliminatedPlayer.name)
+      } else {
+        html += `<div class="elimination-result" style="color: var(--accent-gold);">
+          ⚖️ No one was eliminated (tie or no votes).
+        </div>`
+      }
+
+      html += '</div>'
+      content.innerHTML = html
+      updateAliveDots()
+      setPhase('day_results', payload.round)
+    }
+
+    function handleVictory(payload) {
+      clearInterval(phaseTimer)
+      document.getElementById('gameView').classList.add('hidden')
+      document.getElementById('victoryView').classList.remove('hidden')
+
+      const emoji = document.getElementById('victoryEmoji')
+      const title = document.getElementById('victoryTitle')
+      const subtitle = document.getElementById('victorySubtitle')
+
+      if (payload.winner === 'werewolf') {
+        emoji.textContent = '🐺'
+        title.textContent = 'Werewolves Win!'
+        title.style.color = 'var(--accent-werewolf)'
+        subtitle.textContent = 'The werewolves have taken over the village!'
+      } else {
+        emoji.textContent = '🏘️'
+        title.textContent = 'Village Wins!'
+        title.style.color = 'var(--accent-villager)'
+        subtitle.textContent = 'The villagers have rooted out all werewolves!'
+      }
+
+      if (payload.eliminatedPlayer) {
+        subtitle.textContent += ` ${payload.eliminatedPlayer.name} was the last elimination.`
+      }
+    }
+
+    async function updateAliveDots() {
+      const { data: players } = await supabaseClient
+        .from('players')
+        .select('id, name, alive')
+        .eq('room_code', roomCode)
+        .order('joined_at')
+
+      if (!players) return
+
+      const container = document.getElementById('gamePlayerDots')
+      container.innerHTML = players.map(p =>
+        `<div class="alive-dot ${p.alive ? '' : 'dead'}" title="${p.name}"></div>`
+      ).join('')
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,8 @@
+{
+  "name": "mafia-automated-assembly",
+  "version": "1.0.0",
+  "description": "Live phone-powered social deduction game (Mafia/Werewolf) for large groups. 100 players, QR entry, hosted on GitHub Pages + Supabase.",
+  "scripts": {
+    "deploy": "git push origin main && echo 'Push to main to deploy GitHub Pages'"
+  }
+}

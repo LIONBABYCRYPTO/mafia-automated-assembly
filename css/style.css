@@ -1,0 +1,390 @@
+/* ============================================
+   Mafia: The Automated Assembly - Styles
+   Game-show aesthetic: dark, neon, dramatic
+   ============================================ */
+
+:root {
+  --bg-primary: #0a0a12;
+  --bg-card: #14141f;
+  --bg-surface: #1a1a2e;
+  --text-primary: #e8e8f0;
+  --text-secondary: #9090a8;
+  --accent-villager: #4fc3a1;
+  --accent-werewolf: #e74c3c;
+  --accent-seer: #7c4dff;
+  --accent-doctor: #ff6b9d;
+  --accent-gold: #ffd700;
+  --accent-blue: #4fc3f7;
+  --danger: #ff4444;
+  --success: #44ff88;
+  --border: #2a2a40;
+  --radius: 12px;
+  --radius-sm: 8px;
+  --shadow: 0 4px 24px rgba(0,0,0,0.4);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ---- Layout ---- */
+
+.container {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.host-container {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+/* ---- Typography ---- */
+
+h1 { font-size: 2.5rem; font-weight: 800; }
+h2 { font-size: 1.8rem; font-weight: 700; }
+h3 { font-size: 1.3rem; font-weight: 600; }
+
+.neon-text {
+  text-shadow: 0 0 10px currentColor, 0 0 20px currentColor;
+}
+
+.role-title {
+  font-size: 2.8rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 4px;
+  animation: pulse-glow 2s infinite;
+}
+
+/* ---- Cards ---- */
+
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px;
+  margin-bottom: 16px;
+  box-shadow: var(--shadow);
+}
+
+.player-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 10px;
+}
+
+.player-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px;
+  text-align: center;
+  font-size: 0.9rem;
+  transition: all 0.2s;
+}
+
+.player-card.dead {
+  opacity: 0.4;
+  text-decoration: line-through;
+}
+
+.player-card.targetable {
+  cursor: pointer;
+  border-color: var(--accent-gold);
+}
+.player-card.targetable:hover {
+  background: #2a2a44;
+  transform: scale(1.05);
+}
+
+/* ---- Buttons ---- */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 28px;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: white;
+}
+
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.btn-primary { background: linear-gradient(135deg, #7c4dff, #4fc3f7); }
+.btn-primary:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(124,77,255,0.4); }
+
+.btn-danger { background: var(--accent-werewolf); }
+.btn-danger:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(231,76,60,0.4); }
+
+.btn-success { background: var(--accent-villager); }
+.btn-success:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(79,195,161,0.4); }
+
+.btn-lg { padding: 16px 40px; font-size: 1.2rem; }
+.btn-block { width: 100%; }
+
+/* ---- Room / QR ---- */
+
+.room-header {
+  text-align: center;
+  padding: 40px 20px;
+}
+
+.room-code {
+  font-size: 4rem;
+  font-weight: 900;
+  letter-spacing: 12px;
+  color: var(--accent-gold);
+  text-shadow: 0 0 20px rgba(255,215,0,0.5), 0 0 40px rgba(255,215,0,0.3);
+  margin: 20px 0;
+}
+
+.qr-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 24px;
+  background: white;
+  border-radius: var(--radius);
+  display: inline-flex;
+  margin: 20px auto;
+}
+
+.qr-box img {
+  width: 200px;
+  height: 200px;
+  image-rendering: pixelated;
+}
+
+/* ---- Phase Display ---- */
+
+.phase-banner {
+  text-align: center;
+  padding: 30px;
+  border-radius: var(--radius);
+  margin: 20px 0;
+  font-size: 2rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 6px;
+}
+
+.phase-night {
+  background: linear-gradient(135deg, #0d0d2b, #1a0a2e);
+  color: #7c4dff;
+  border: 2px solid #7c4dff;
+}
+
+.phase-day {
+  background: linear-gradient(135deg, #1a2e1a, #0d2b1a);
+  color: #4fc3a1;
+  border: 2px solid #4fc3a1;
+}
+
+.phase-vote {
+  background: linear-gradient(135deg, #2e1a0d, #2b1a0d);
+  color: var(--accent-gold);
+  border: 2px solid var(--accent-gold);
+}
+
+.phase-result {
+  background: linear-gradient(135deg, #2e0d0d, #2b0d0d);
+  color: var(--danger);
+  border: 2px solid var(--danger);
+}
+
+/* ---- Timer ---- */
+
+.timer {
+  font-size: 3rem;
+  font-weight: 800;
+  text-align: center;
+  margin: 16px 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.timer.warning { color: var(--danger); animation: pulse 1s infinite; }
+.timer.urgent { color: var(--danger); animation: pulse 0.5s infinite; }
+
+/* ---- Player Count ---- */
+
+.player-count {
+  font-size: 1.2rem;
+  color: var(--text-secondary);
+  text-align: center;
+  margin: 10px 0;
+}
+
+.player-count span {
+  color: var(--accent-gold);
+  font-weight: 700;
+  font-size: 1.5rem;
+}
+
+/* ---- Votes Bar ---- */
+
+.vote-bar-container {
+  margin: 8px 0;
+}
+
+.vote-bar-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  margin-bottom: 2px;
+}
+
+.vote-bar {
+  height: 20px;
+  background: var(--bg-surface);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.vote-bar-fill {
+  height: 100%;
+  border-radius: 10px;
+  transition: width 0.5s ease;
+  background: linear-gradient(90deg, var(--accent-gold), #ff8c00);
+}
+
+/* ---- Role Colors ---- */
+
+.role-villager { color: var(--accent-villager); }
+.role-werewolf { color: var(--accent-werewolf); }
+.role-seer { color: var(--accent-seer); }
+.role-doctor { color: var(--accent-doctor); }
+
+.bg-villager { background: var(--accent-villager); }
+.bg-werewolf { background: var(--accent-werewolf); border-color: var(--accent-werewolf); }
+.bg-seer { background: var(--accent-seer); border-color: var(--accent-seer); }
+.bg-doctor { background: var(--accent-doctor); border-color: var(--accent-doctor); }
+
+/* ---- Player Lobby ---- */
+
+.lobby-input {
+  width: 100%;
+  padding: 14px 18px;
+  background: var(--bg-surface);
+  border: 2px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: 1.1rem;
+  margin-bottom: 16px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.lobby-input:focus {
+  border-color: var(--accent-blue);
+}
+
+/* ---- Animations ---- */
+
+@keyframes pulse-glow {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.85; }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.fade-in {
+  animation: fadeIn 0.4s ease;
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.slide-up {
+  animation: slideUp 0.5s ease;
+}
+
+@keyframes roleReveal {
+  0% { transform: scale(0) rotate(-10deg); opacity: 0; }
+  60% { transform: scale(1.2) rotate(2deg); opacity: 1; }
+  100% { transform: scale(1) rotate(0); opacity: 1; }
+}
+
+.role-reveal {
+  animation: roleReveal 0.8s ease forwards;
+}
+
+@keyframes eliminationReveal {
+  0% { filter: brightness(1); }
+  50% { filter: brightness(3); }
+  100% { filter: brightness(1); }
+}
+
+.elimination-flash {
+  animation: eliminationReveal 1s ease;
+}
+
+/* ---- Reveal Box ---- */
+
+.reveal-box {
+  text-align: center;
+  padding: 40px;
+  border-radius: var(--radius);
+  margin: 20px 0;
+  border: 3px solid;
+}
+
+/* ---- Victory Screen ---- */
+
+.victory-screen {
+  text-align: center;
+  padding: 60px 20px;
+}
+
+.victory-screen h1 {
+  font-size: 4rem;
+  margin-bottom: 20px;
+}
+
+.victory-screen .emoji-big {
+  font-size: 6rem;
+  display: block;
+  margin-bottom: 20px;
+}
+
+/* ---- Hidden Utility ---- */
+
+.hidden { display: none !important; }
+
+/* ---- Responsive ---- */
+
+@media (max-width: 600px) {
+  h1 { font-size: 1.8rem; }
+  .room-code { font-size: 2.5rem; letter-spacing: 6px; }
+  .phase-banner { font-size: 1.3rem; padding: 20px; }
+  .player-list { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); }
+  .btn-lg { padding: 12px 24px; font-size: 1rem; }
+}
