@@ -102,6 +102,24 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 /* Ad banner */
 .ad-banner{text-align:center;padding:12px;margin:12px 0;border:1px dashed #2a2a4a;border-radius:12px;color:#555;font-size:12px;display:none}
 .ad-banner.show{display:block}
+.ad-banner-sponsored{border-color:#6c63ff44;color:#6c63ff88}
+
+/* Sponsor banner */
+.sponsor-banner{display:flex;align-items:center;gap:12px;padding:14px 16px;margin:12px 0;border-radius:12px;font-size:13px;display:none}
+.sponsor-banner.show{display:flex}
+.sponsor-banner.platinum{background:linear-gradient(135deg,#2a2a4a44,#6c63ff22);border:1px solid #6c63ff44;color:#b8b8ff}
+.sponsor-banner.gold{background:linear-gradient(135deg,#2a2a1a44,#ffa50222);border:1px solid #ffa50244;color:#ffd07d}
+
+/* Donation section */
+.donation-card{text-align:center;padding:16px;border-radius:12px;background:linear-gradient(135deg,#1a1a2e,#2a1a2e);border:1px solid #ff475722;margin:12px 0;display:none}
+.donation-card.show{display:block}
+.donation-card .heart{font-size:28px;margin-bottom:8px}
+.donation-card .donate-btn{padding:10px 24px;border-radius:10px;border:1px solid #ff4757;background:transparent;color:#ff4757;font-size:14px;font-weight:600;cursor:pointer;transition:all .3s;margin-top:8px}
+.donation-card .donate-btn:hover{background:#ff475722}
+
+/* Premium badge */
+.premium-badge{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;background:linear-gradient(135deg,#ffd70033,#ffa50233);color:#ffd700;border:1px solid #ffa50244;cursor:pointer;transition:all .3s}
+.premium-badge:hover{transform:scale(1.05)}
 
 /* Screen toggle */
 .screen{display:none}.screen.active{display:block}
@@ -135,9 +153,20 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
       <p style="color:#8888aa;font-size:16px;margin-bottom:4px" data-i18n="landing-subtitle"></p>
       <p style="color:#8888aa;font-size:14px;display:none" id="landingSubZh" data-i18n="landing-subtitle-zh"></p>
       <div class="ad-banner show" id="adBannerLanding" data-i18n="advertisement"></div>
+      <div class="sponsor-banner platinum show" id="sponsorBanner">
+        <span>⭐</span>
+        <span style="flex:1">Support Werewolf — Become a sponsor for your classroom or event</span>
+        <span class="premium-badge" onclick="alert('Premium features coming soon!')">✨ Premium</span>
+      </div>
       <button class="btn btn-primary mt-24" onclick="createRoom()" id="createBtn">
         <span data-i18n="create-game"></span>
       </button>
+      <div class="donation-card show" id="donationCard">
+        <div class="heart">❤️</div>
+        <div style="font-weight:600;margin-bottom:4px">Support Werewolf</div>
+        <div style="color:#8888aa;font-size:13px;margin-bottom:4px">Help keep the game free and improve it</div>
+        <button class="donate-btn" onclick="alert('Donation link coming soon!')">💛 Donate</button>
+      </div>
     </div>
   </div>
 
@@ -219,7 +248,9 @@ let onlineTimer = null;
 let isGameActive = false;
 
 // ===== SETTINGS =====
-const ADS_ENABLED = false;
+const ADS_ENABLED = false;      // Show/hide ad banners
+const SPONSORS_ENABLED = true;  // Show sponsor banners
+const DONATIONS_ENABLED = true; // Show donation section
 const POLL_INTERVAL = 1000;
 const ONLINE_POLL_INTERVAL = 3000;
 
@@ -227,6 +258,8 @@ if (ADS_ENABLED) {
   document.getElementById('adBannerLanding').classList.add('show');
   document.getElementById('adBannerLobby').classList.add('show');
 }
+if (!SPONSORS_ENABLED) document.getElementById('sponsorBanner').classList.remove('show');
+if (!DONATIONS_ENABLED) document.getElementById('donationCard').classList.remove('show');
 
 // ===== INTERNAL t() with DOM update =====
 function refreshTranslations() {
