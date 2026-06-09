@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Mafia: The Automated Assembly</title>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <link rel="stylesheet" href="css/style.css">
   <style>
@@ -93,492 +92,422 @@
   </div>
 
   <script src="js/config.js"></script>
-  <script src="js/supabase-client.js"></script>
-  <script src="js/game-state.js"></script>
   <script>
     // ==========================================
-    // HOST CONTROLLER
+    // HOST CONTROLLER - Pure fetch() API, no Supabase
     // ==========================================
-    let roomCode = null
-    let roomId = null
-    let currentPhase = 'lobby'
-    let currentRound = 0
-    let phaseTimer = null
-    let hostJWT = null
-    const SUPABASE_URL = window.SUPABASE_URL
-    const SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY
+    const API_URL = window.API_URL || 'http://localhost:8787';
+    let roomCode = null;
+    let roomId = null;
+    let hostToken = null;
+    let currentPhase = 'lobby';
+    let currentRound = 0;
+    let phaseTimer = null;
+    let pollInterval = null;
+    let actionPollInterval = null;
 
-    function getSupabase() {
-      return supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-        realtime: { params: { eventsPerSecond: 10 } }
-      })
-    }
-
-    async function getJWT() {
-      const sb = getSupabase()
-      const { data, error } = await sb.auth.signInAnonymously()
-      if (error) throw new Error('Auth: ' + error.message)
-      return data.session.access_token
-    }
-
-    function getRoomChannel(code) {
-      return getSupabase().channel('room:' + code, {
-        config: { broadcast: { self: true } }
-      })
-    }
-
-    // Try to restore from localStorage
-    function tryRestore() {
-      try {
-        const saved = JSON.parse(localStorage.getItem('mafia_host_room') || 'null')
-        if (saved && saved.roomCode && saved.roomId && saved.jwt) {
-          roomCode = saved.roomCode
-          roomId = saved.roomId
-          hostJWT = saved.jwt
-          return true
-        }
-      } catch(e) {}
-      return false
-    }
-
-    function saveState() {
-      localStorage.setItem('mafia_host_room', JSON.stringify({
-        roomCode: roomCode, roomId: roomId, jwt: hostJWT
-      }))
-    }
-
-    function clearState() {
-      localStorage.removeItem('mafia_host_room')
+    function api(path, method, body) {
+      var opts = { method: method || 'GET', headers: { 'Content-Type': 'application/json' } };
+      if (body) opts.body = JSON.stringify(body);
+      if (hostToken) opts.headers['Authorization'] = 'Bearer ' + hostToken;
+      return fetch(API_URL + path, opts).then(function(r) { return r.json(); });
     }
 
     function showToast(msg) {
-      var t = document.createElement('div')
-      t.className = 'toast'
-      t.textContent = msg
-      document.body.appendChild(t)
-      setTimeout(function() { t.remove() }, 3000)
-    }
-
-    async function reconnectRoom() {
-      var code = document.getElementById('reconnectCode').value.trim().toUpperCase()
-      if (!code || code.length < 4) return
-      var sb = getSupabase()
-      var { data } = await sb.from('rooms').select('*').eq('room_code', code).single()
-      if (!data) { alert('Room not found'); return }
-      roomCode = code; roomId = data.id
-      hostJWT = await getJWT()
-      saveState()
-      document.getElementById('reconnectView').classList.add('hidden')
-      if (data.phase === 'lobby' || !data.phase) {
-        document.getElementById('lobbyView').classList.remove('hidden')
-        document.getElementById('roomCodeDisplay').textContent = roomCode
-        await generateQR()
-        setupListeners()
-        await updatePlayerList()
-      } else {
-        document.getElementById('gameView').classList.remove('hidden')
-        setupListeners()
-        await syncToGameState(data)
-      }
+      var t = document.createElement('div');
+      t.className = 'toast';
+      t.textContent = msg;
+      document.body.appendChild(t);
+      setTimeout(function() { t.remove(); }, 3000);
     }
 
     function generateRoomCode() {
-      var chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
-      var code = ''
-      for (var i = 0; i < 6; i++) code += chars.charAt(Math.floor(Math.random() * chars.length))
-      return code
+      var chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+      var code = '';
+      for (var i = 0; i < 6; i++) code += chars.charAt(Math.floor(Math.random() * chars.length));
+      return code;
     }
 
-    async function init() {
-      if (tryRestore()) {
-        var sb = getSupabase()
-        var { data } = await sb.from('rooms').select('*').eq('room_code', roomCode).single()
-        if (data) {
-          if (data.phase === 'lobby' || !data.phase) {
-            document.getElementById('lobbyView').classList.remove('hidden')
-            document.getElementById('roomCodeDisplay').textContent = roomCode
-            await generateQR()
-            setupListeners()
-            await updatePlayerList()
-            return
+    // ── INIT ──
+    document.addEventListener('DOMContentLoaded', function() {
+      var saved = JSON.parse(localStorage.getItem('mafia_host_room') || 'null');
+      if (saved && saved.roomCode && saved.hostToken) {
+        roomCode = saved.roomCode;
+        hostToken = saved.hostToken;
+        roomId = saved.roomId;
+        api('/api/rooms/' + roomCode).then(function(data) {
+          if (data && data.room_code) {
+            if (data.phase === 'lobby' || !data.phase) {
+              showLobby();
+              generateQR();
+              startPolling();
+              updatePlayerList();
+            } else {
+              document.getElementById('gameView').classList.remove('hidden');
+              syncToGameState(data);
+            }
           } else {
-            document.getElementById('gameView').classList.remove('hidden')
-            setupListeners()
-            await syncToGameState(data)
-            return
+            startNewGame();
           }
+        }).catch(function() { startNewGame(); });
+      } else {
+        startNewGame();
+      }
+    });
+
+    function startNewGame() {
+      localStorage.removeItem('mafia_host_room');
+      roomCode = generateRoomCode();
+      document.getElementById('roomCodeDisplay').textContent = roomCode;
+      api('/api/rooms', 'POST', { room_code: roomCode }).then(function(data) {
+        if (data && data.room_code) {
+          roomCode = data.room_code;
+          hostToken = data.host_token;
+          roomId = data.id;
+          localStorage.setItem('mafia_host_room', JSON.stringify({ roomCode: roomCode, hostToken: hostToken, roomId: roomId }));
+          document.getElementById('lobbyView').classList.remove('hidden');
+          generateQR();
+          startPolling();
+          updatePlayerList();
         }
-      }
-
-      clearState()
-      roomCode = generateRoomCode()
-      document.getElementById('roomCodeDisplay').textContent = roomCode
-
-      try {
-        hostJWT = await getJWT()
-      } catch(e) {
-        console.error(e)
-        showToast('Auth failed: ' + e.message)
-      }
-
-      var sb = getSupabase()
-      var { data, error } = await sb
-        .from('rooms')
-        .insert({ room_code: roomCode, host_id: 'host', phase: 'lobby' })
-        .select()
-        .single()
-      if (error) { console.error('Failed to create room:', error); showToast('Room error: ' + error.message); return }
-      roomId = data.id
-      saveState()
-      await generateQR()
-      setupListeners()
-      await updatePlayerList()
+      }).catch(function(err) { showToast('Failed to create room: ' + err.message); });
     }
 
-    document.addEventListener('DOMContentLoaded', init)
-
-    async function generateQR() {
-      var playerUrl = window.location.origin + window.location.pathname.replace(/\/[^/]*$/, '/player.html') + '?room=' + roomCode
-      var container = document.getElementById('qrcodeContainer')
-      container.innerHTML = ''
-      new QRCode(container, {
-        text: playerUrl,
-        width: 220, height: 220,
-        colorDark: '#000000', colorLight: '#ffffff',
-        correctLevel: QRCode.CorrectLevel.H
-      })
+    function showLobby() {
+      document.getElementById('lobbyView').classList.remove('hidden');
+      document.getElementById('roomCodeDisplay').textContent = roomCode;
     }
 
-    function setupListeners() {
-      getSupabase()
-        .channel('room-players:' + roomCode)
-        .on('postgres_changes',
-          { event: '*', schema: 'public', table: 'players', filter: 'room_code=eq.' + roomCode },
-          function() { updatePlayerList() }
-        )
-        .subscribe()
-
-      var ch = getRoomChannel(roomCode)
-      ch.on('broadcast', { event: 'night_result' }, function(msg) { handleNightResult(msg.payload) })
-      ch.on('broadcast', { event: 'day_result' }, function(msg) { handleDayResult(msg.payload) })
-      ch.on('broadcast', { event: 'victory' }, function(msg) { handleVictory(msg.payload) })
-      ch.subscribe()
-
-      getSupabase()
-        .channel('room-state:' + roomCode)
-        .on('postgres_changes',
-          { event: 'UPDATE', schema: 'public', table: 'rooms', filter: 'room_code=eq.' + roomCode },
-          function() {}
-        )
-        .subscribe()
-
-      getSupabase()
-        .channel('night-actions:' + roomCode)
-        .on('postgres_changes',
-          { event: '*', schema: 'public', table: 'night_actions', filter: 'room_code=eq.' + roomCode },
-          function() { updateNightActionCounts() }
-        )
-        .subscribe()
-
-      document.getElementById('startGameBtn').onclick = function() { startGame() }
+    function generateQR() {
+      var playerUrl = window.location.origin + window.location.pathname.replace(/\/[^/]*$/, '/player.html') + '?room=' + roomCode;
+      var container = document.getElementById('qrcodeContainer');
+      container.innerHTML = '';
+      new QRCode(container, { text: playerUrl, width: 220, height: 220, colorDark: '#000000', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.H });
     }
 
-    async function updatePlayerList() {
-      var sb = getSupabase()
-      var { data: players } = await sb
-        .from('players')
-        .select('id, name, alive')
-        .eq('room_code', roomCode)
-        .order('joined_at')
-      if (!players) return
-      document.getElementById('playerCountDisplay').textContent = players.length
-      document.getElementById('lobbyPlayerDots').innerHTML = players.map(function(p) {
-        return '<div class="alive-dot ' + (p.alive ? '' : 'dead') + '" title="' + p.name + '"></div>'
-      }).join('')
-      document.getElementById('startGameBtn').disabled = players.length < 6
-    }
-
-    async function updateNightActionCounts() {
-      var sb = getSupabase()
-      var { data: actions } = await sb
-        .from('night_actions')
-        .select('player_id, action_type')
-        .eq('room_code', roomCode)
-        .eq('round', currentRound)
-      var kills = (actions || []).filter(function(a) { return a.action_type === 'kill' }).length
-      var invs = (actions || []).filter(function(a) { return a.action_type === 'investigate' }).length
-      var docs = (actions || []).filter(function(a) { return a.action_type === 'protect' }).length
-      document.getElementById('nightActionCount').textContent = kills
-      document.getElementById('seerActionCount').textContent = invs
-      document.getElementById('docActionCount').textContent = docs
-    }
-
-    // ==========================================
-    // START GAME
-    // ==========================================
-    async function startGame() {
-      if (!hostJWT) {
-        try { hostJWT = await getJWT() } catch(e) { alert('Auth failed: ' + e.message); return }
-      }
-      if (!roomCode) { alert('No room code'); return }
-
-      document.getElementById('lobbyView').classList.add('hidden')
-      showToast('🚀 Assigning roles...')
-
-      try {
-        var result = await fetch(SUPABASE_URL + '/functions/v1/assign-roles', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + hostJWT },
-          body: JSON.stringify({ room_code: roomCode })
-        })
-        var data = await result.json()
-        if (!result.ok) throw new Error(data.error || 'HTTP ' + result.status)
-        if (data.success) {
-          currentPhase = 'night'
-          currentRound = 1
-          startNightPhase()
+    // ── POLLING (replaces Supabase realtime) ──
+    function startPolling() {
+      if (pollInterval) clearInterval(pollInterval);
+      pollInterval = setInterval(function() {
+        updatePlayerList();
+        if (currentPhase !== 'lobby') {
+          api('/api/rooms/' + roomCode).then(function(room) {
+            if (!room || !room.phase) return;
+            if (room.phase !== currentPhase) {
+              syncToGameState(room);
+            }
+            if (room.winner) {
+              handleVictory({ winner: room.winner });
+            }
+          }).catch(function() {});
         }
-      } catch(err) {
-        alert('Error: ' + err.message)
-        document.getElementById('lobbyView').classList.remove('hidden')
-        document.getElementById('gameView').classList.add('hidden')
-      }
+      }, 2000);
     }
 
+    function startActionPolling() {
+      if (actionPollInterval) clearInterval(actionPollInterval);
+      actionPollInterval = setInterval(updateNightActionCounts, 2000);
+    }
+
+    // ── PLAYER LIST ──
+    function updatePlayerList() {
+      if (!roomCode) return;
+      api('/api/players?room_code=' + roomCode).then(function(players) {
+        if (!players || !players.length) { document.getElementById('playerCountDisplay').textContent = '0'; return; }
+        document.getElementById('playerCountDisplay').textContent = players.length;
+        document.getElementById('lobbyPlayerDots').innerHTML = players.map(function(p) {
+          return '<div class="alive-dot ' + (p.alive ? '' : 'dead') + '" title="' + p.name + '">' + (p.alive ? '' : '💀') + '</div>';
+        }).join('');
+        document.getElementById('startGameBtn').disabled = players.length < 6;
+        updateAliveDots();
+      }).catch(function() {});
+    }
+
+    function updateNightActionCounts() {
+      if (!roomCode || !currentRound) return;
+      api('/api/night-actions?room_code=' + roomCode + '&round=' + currentRound).then(function(actions) {
+        if (!actions) return;
+        var kills = actions.filter(function(a) { return a.action_type === 'kill'; }).length;
+        var invs = actions.filter(function(a) { return a.action_type === 'investigate'; }).length;
+        var docs = actions.filter(function(a) { return a.action_type === 'protect'; }).length;
+        document.getElementById('nightActionCount').textContent = kills;
+        document.getElementById('seerActionCount').textContent = invs;
+        document.getElementById('docActionCount').textContent = docs;
+      }).catch(function() {});
+    }
+
+    // ── START GAME ──
+    document.getElementById('startGameBtn').onclick = function() { startGame(); };
+
+    function startGame() {
+      if (!roomCode) { alert('No room code'); return; }
+      document.getElementById('lobbyView').classList.add('hidden');
+      showToast('🚀 Assigning roles...');
+      api('/api/assign-roles', 'POST', { room_code: roomCode }).then(function(data) {
+        if (data && data.success) {
+          currentPhase = 'night';
+          currentRound = 1;
+          startNightPhase();
+        } else {
+          alert('Error: ' + (data.error || 'Unknown'));
+          document.getElementById('lobbyView').classList.remove('hidden');
+        }
+      }).catch(function(err) {
+        alert('Error: ' + err.message);
+        document.getElementById('lobbyView').classList.remove('hidden');
+      });
+    }
+
+    // ── PHASES ──
     function startNightPhase() {
-      clearInterval(phaseTimer)
-      document.getElementById('hostControls').style.display = 'block'
-      document.getElementById('hostControls').querySelector('#phaseActionBtn').textContent = '⏰ End Night Phase'
-      document.getElementById('hostControls').querySelector('#phaseActionBtn').onclick = function() { processNight() }
-      document.getElementById('nightHostContent').classList.remove('hidden')
-      document.getElementById('gameContent').innerHTML = ''
-      var banner = document.getElementById('phaseBanner')
-      banner.className = 'phase-banner phase-night'
-      banner.textContent = '🌙 Night ' + currentRound
-      startTimer(parseInt(document.getElementById('nightDuration').value) || 60)
-      updateNightActionCounts()
-      updateAliveDots()
+      clearInterval(phaseTimer);
+      document.getElementById('hostControls').style.display = 'block';
+      document.getElementById('hostControls').querySelector('#phaseActionBtn').textContent = '⏰ End Night Phase';
+      document.getElementById('hostControls').querySelector('#phaseActionBtn').onclick = function() { processNight(); };
+      document.getElementById('nightHostContent').classList.remove('hidden');
+      document.getElementById('gameContent').innerHTML = '';
+      var banner = document.getElementById('phaseBanner');
+      banner.className = 'phase-banner phase-night';
+      banner.textContent = '🌙 Night ' + currentRound;
+      startTimer(parseInt(document.getElementById('nightDuration').value) || 60);
+      updateNightActionCounts();
+      startActionPolling();
+      updateAliveDots();
     }
 
     function startTimer(seconds) {
-      clearInterval(phaseTimer)
-      var display = document.getElementById('timerDisplay')
-      var remaining = seconds
+      clearInterval(phaseTimer);
+      var display = document.getElementById('timerDisplay');
+      var remaining = seconds;
       function update() {
-        var mins = Math.floor(remaining / 60)
-        var secs = remaining % 60
-        display.textContent = mins + ':' + (secs < 10 ? '0' : '') + secs
-        if (remaining <= 10) display.className = 'timer urgent'
-        else if (remaining <= 20) display.className = 'timer warning'
-        else display.className = 'timer'
-        if (remaining <= 0) { clearInterval(phaseTimer); handlePhaseTimeout() }
-        remaining--
+        var mins = Math.floor(remaining / 60);
+        var secs = remaining % 60;
+        display.textContent = mins + ':' + (secs < 10 ? '0' : '') + secs;
+        if (remaining <= 10) display.className = 'timer urgent';
+        else if (remaining <= 20) display.className = 'timer warning';
+        else display.className = 'timer';
+        if (remaining <= 0) { clearInterval(phaseTimer); handlePhaseTimeout(); }
+        remaining--;
       }
-      update()
-      phaseTimer = setInterval(update, 1000)
+      update();
+      phaseTimer = setInterval(update, 1000);
     }
 
     function handlePhaseTimeout() {
-      if (currentPhase === 'night') processNight()
-      else if (currentPhase === 'day_discussion') startVotePhase()
-      else if (currentPhase === 'day_vote') processDay()
+      if (currentPhase === 'night') processNight();
+      else if (currentPhase === 'day_discussion') startVotePhase();
+      else if (currentPhase === 'day_vote') processDay();
     }
 
-    async function processNight() {
-      clearInterval(phaseTimer)
-      document.getElementById('timerDisplay').textContent = '--'
-      document.getElementById('hostControls').style.display = 'none'
-      document.getElementById('nightHostContent').innerHTML = '<p style="color:var(--text-secondary);padding:20px;">⚡ Resolving night actions...</p>'
-      try {
-        var result = await fetch(SUPABASE_URL + '/functions/v1/process-night', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + hostJWT },
-          body: JSON.stringify({ room_code: roomCode })
-        })
-        var data = await result.json()
-        if (!result.ok) throw new Error(data.error || 'HTTP ' + result.status)
-        handleNightResult(data)
-      } catch(err) {
-        alert('Night error: ' + err.message)
-        startNightPhase()
-      }
+    function processNight() {
+      clearInterval(phaseTimer);
+      if (actionPollInterval) clearInterval(actionPollInterval);
+      document.getElementById('timerDisplay').textContent = '--';
+      document.getElementById('hostControls').style.display = 'none';
+      document.getElementById('nightHostContent').innerHTML = '<p style="color:var(--text-secondary);padding:20px;">⚡ Resolving night actions...</p>';
+      api('/api/process-night', 'POST', { room_code: roomCode }).then(function(data) {
+        handleNightResult(data);
+      }).catch(function(err) {
+        alert('Night error: ' + err.message);
+        startNightPhase();
+      });
     }
 
-    async function processDay() {
-      clearInterval(phaseTimer)
-      document.getElementById('timerDisplay').textContent = '--'
-      document.getElementById('hostControls').style.display = 'none'
-      document.getElementById('gameContent').innerHTML = '<p style="color:var(--text-secondary);text-align:center;">⚡ Tallying votes...</p>'
-      try {
-        var result = await fetch(SUPABASE_URL + '/functions/v1/process-day', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + hostJWT },
-          body: JSON.stringify({ room_code: roomCode })
-        })
-        var data = await result.json()
-        if (!result.ok) throw new Error(data.error || 'HTTP ' + result.status)
+    function processDay() {
+      clearInterval(phaseTimer);
+      document.getElementById('timerDisplay').textContent = '--';
+      document.getElementById('hostControls').style.display = 'none';
+      document.getElementById('gameContent').innerHTML = '<p style="color:var(--text-secondary);text-align:center;">⚡ Tallying votes...</p>';
+      api('/api/process-day', 'POST', { room_code: roomCode }).then(function(data) {
         if (data.winner) {
-          handleVictory({ winner: data.winner, eliminatedPlayer: data.eliminatedPlayer })
+          handleVictory({ winner: data.winner, eliminatedPlayer: data.eliminatedPlayer });
         } else {
-          handleDayResult({ eliminatedPlayer: data.eliminatedPlayer, voteTally: data.voteTally, round: currentRound })
+          handleDayResult({ eliminatedPlayer: data.eliminatedPlayer, voteTally: data.voteTally, round: currentRound });
         }
-      } catch(err) {
-        alert('Day error: ' + err.message)
-        document.getElementById('gameContent').innerHTML = '<p style="color:var(--danger);text-align:center;">Error: ' + err.message + '</p>'
-      }
+      }).catch(function(err) {
+        alert('Day error: ' + err.message);
+        document.getElementById('gameContent').innerHTML = '<p style="color:var(--danger);text-align:center;">Error: ' + err.message + '</p>';
+      });
     }
 
     function startVotePhase() {
-      clearInterval(phaseTimer)
-      document.getElementById('timerDisplay').textContent = '--'
-      currentPhase = 'day_vote'
-      document.getElementById('phaseBanner').className = 'phase-banner phase-vote'
-      document.getElementById('phaseBanner').textContent = '🗳️ Vote — Round ' + currentRound
-      document.getElementById('hostControls').style.display = 'block'
-      document.getElementById('hostControls').querySelector('#phaseActionBtn').textContent = '📊 End Vote & Tally'
-      document.getElementById('hostControls').querySelector('#phaseActionBtn').onclick = function() { processDay() }
-      document.getElementById('nightHostContent').classList.add('hidden')
-      document.getElementById('gameContent').innerHTML = '<p style="color:var(--text-secondary);text-align:center;">🗳️ Players are voting now...</p>'
-      startTimer(parseInt(document.getElementById('voteDuration').value) || 60)
+      clearInterval(phaseTimer);
+      document.getElementById('timerDisplay').textContent = '--';
+      currentPhase = 'day_vote';
+      document.getElementById('phaseBanner').className = 'phase-banner phase-vote';
+      document.getElementById('phaseBanner').textContent = '🗳️ Vote — Round ' + currentRound;
+      document.getElementById('hostControls').style.display = 'block';
+      document.getElementById('hostControls').querySelector('#phaseActionBtn').textContent = '📊 End Vote & Tally';
+      document.getElementById('hostControls').querySelector('#phaseActionBtn').onclick = function() { processDay(); };
+      document.getElementById('nightHostContent').classList.add('hidden');
+      document.getElementById('gameContent').innerHTML = '<p style="color:var(--text-secondary);text-align:center;">🗳️ Players are voting now...</p>';
+      startTimer(parseInt(document.getElementById('voteDuration').value) || 60);
     }
 
-    // ==========================================
-    // BROADCAST HANDLERS
-    // ==========================================
+    // ── HANDLERS ──
     function handleNightResult(payload) {
-      document.getElementById('nightHostContent').classList.add('hidden')
-      document.getElementById('hostControls').style.display = 'block'
-      var round = payload.round || currentRound
-      var html = '<div class="card fade-in"><h2>🌙 Night ' + round + ' Results</h2>'
+      document.getElementById('nightHostContent').classList.add('hidden');
+      document.getElementById('hostControls').style.display = 'block';
+      var round = payload.round || currentRound;
+      var html = '<div class="card fade-in"><h2>🌙 Night ' + round + ' Results</h2>';
       if (payload.killedPlayer) {
-        html += '<div class="night-summary" style="background:rgba(231,76,60,0.15);border:2px solid var(--accent-werewolf);">☠️ <strong>' + payload.killedPlayer.name + '</strong> was attacked!</div>'
+        html += '<div class="night-summary" style="background:rgba(231,76,60,0.15);border:2px solid var(--accent-werewolf);">☠️ <strong>' + payload.killedPlayer.name + '</strong> was attacked!</div>';
       } else if (payload.saved) {
-        html += '<div class="night-summary" style="background:rgba(255,107,157,0.15);border:2px solid var(--accent-doctor);">💉 The Doctor saved someone!</div>'
+        html += '<div class="night-summary" style="background:rgba(255,107,157,0.15);border:2px solid var(--accent-doctor);">💉 The Doctor saved someone!</div>';
       } else {
-        html += '<div class="night-summary" style="color:var(--text-secondary);border:1px solid var(--border);">🌅 The night passed peacefully.</div>'
+        html += '<div class="night-summary" style="color:var(--text-secondary);border:1px solid var(--border);">🌅 The night passed peacefully.</div>';
       }
-      html += '</div>'
-      document.getElementById('gameContent').innerHTML = html
-      updateAliveDots()
+      html += '</div>';
+      document.getElementById('gameContent').innerHTML = html;
+      updateAliveDots();
 
-      if (payload.winner) { handleVictory({ winner: payload.winner }); return }
+      if (payload.winner) { handleVictory({ winner: payload.winner }); return; }
 
-      currentPhase = 'day_discussion'
-      document.getElementById('hostControls').querySelector('#phaseActionBtn').textContent = '🗳️ Start Voting'
-      document.getElementById('hostControls').querySelector('#phaseActionBtn').onclick = function() { startVotePhase() }
-      document.getElementById('phaseBanner').className = 'phase-banner phase-day'
-      document.getElementById('phaseBanner').textContent = '☀️ Day ' + round + ' — Discuss!'
-      startTimer(parseInt(document.getElementById('discussionDuration').value) || 180)
+      currentPhase = 'day_discussion';
+      document.getElementById('hostControls').querySelector('#phaseActionBtn').textContent = '🗳️ Start Voting';
+      document.getElementById('hostControls').querySelector('#phaseActionBtn').onclick = function() { startVotePhase(); };
+      document.getElementById('phaseBanner').className = 'phase-banner phase-day';
+      document.getElementById('phaseBanner').textContent = '☀️ Day ' + round + ' — Discuss!';
+      startTimer(parseInt(document.getElementById('discussionDuration').value) || 180);
     }
 
     function handleDayResult(payload) {
-      var eliminated = payload.eliminatedPlayer
-      var tally = payload.voteTally
-      var html = '<div class="card fade-in"><h2>☀️ Day ' + (payload.round || currentRound) + ' Results</h2>'
+      var eliminated = payload.eliminatedPlayer;
+      var tally = payload.voteTally;
+      var html = '<div class="card fade-in"><h2>☀️ Day ' + (payload.round || currentRound) + ' Results</h2>';
 
       if (tally && Object.keys(tally).length > 0) {
-        html += '<div class="vote-tally-wrap"><div id="voteTallyDisplay"></div></div>'
-        setTimeout(async function() {
-          var sb = getSupabase()
-          var { data: players } = await sb.from('players').select('id, name').eq('room_code', roomCode)
-          var nameMap = {}
-          if (players) players.forEach(function(p) { nameMap[p.id] = p.name })
-          var tallyDiv = document.getElementById('voteTallyDisplay')
-          if (tallyDiv) {
-            var maxVotes = Math.max.apply(null, Object.values(tally)) || 1
-            tallyDiv.innerHTML = Object.keys(tally).sort(function(a, b) { return tally[b] - tally[a] }).map(function(id) {
-              return '<div class="vote-bar-container"><div class="vote-bar-label"><span>' + (nameMap[id] || '#' + id) + '</span><span>' + tally[id] + ' vote' + (tally[id] > 1 ? 's' : '') + '</span></div><div class="vote-bar"><div class="vote-bar-fill" style="width:' + (tally[id]/maxVotes*100) + '%"></div></div></div>'
-            }).join('')
-          }
-        }, 50)
+        html += '<div class="vote-tally-wrap"><div id="voteTallyDisplay"></div></div>';
+        setTimeout(function() {
+          api('/api/players?room_code=' + roomCode).then(function(players) {
+            var nameMap = {};
+            if (players) players.forEach(function(p) { nameMap[p.id] = p.name; });
+            var tallyDiv = document.getElementById('voteTallyDisplay');
+            if (tallyDiv) {
+              var maxVotes = Math.max.apply(null, Object.values(tally)) || 1;
+              tallyDiv.innerHTML = Object.keys(tally).sort(function(a, b) { return tally[b] - tally[a]; }).map(function(id) {
+                return '<div class="vote-bar-container"><div class="vote-bar-label"><span>' + (nameMap[id] || '#' + id) + '</span><span>' + tally[id] + ' vote' + (tally[id] > 1 ? 's' : '') + '</span></div><div class="vote-bar"><div class="vote-bar-fill" style="width:' + (tally[id] / maxVotes * 100) + '%"></div></div></div>';
+              }).join('');
+            }
+          }).catch(function() {});
+        }, 50);
       }
 
       if (eliminated) {
-        html += '<div class="phase-banner phase-result elimination-flash fade-in" style="margin-top:16px;">⚖️ <strong>' + eliminated.name + '</strong> eliminated!<br><span style="font-size:1.4rem;margin-top:8px;display:block;">Role: <strong>' + eliminated.role.charAt(0).toUpperCase() + eliminated.role.slice(1) + '</strong></span></div>'
+        html += '<div class="phase-banner phase-result elimination-flash fade-in" style="margin-top:16px;">⚖️ <strong>' + eliminated.name + '</strong> eliminated!<br><span style="font-size:1.4rem;margin-top:8px;display:block;">Role: <strong>' + eliminated.role.charAt(0).toUpperCase() + eliminated.role.slice(1) + '</strong></span></div>';
       } else {
-        html += '<div class="elimination-result" style="color:var(--accent-gold);">⚖️ No one was eliminated.</div>'
+        html += '<div class="elimination-result" style="color:var(--accent-gold);">⚖️ No one was eliminated.</div>';
       }
-      html += '</div>'
-      document.getElementById('gameContent').innerHTML = html
-      updateAliveDots()
+      html += '</div>';
+      document.getElementById('gameContent').innerHTML = html;
+      updateAliveDots();
 
-      currentPhase = 'day_results'
-      document.getElementById('hostControls').style.display = 'block'
-      document.getElementById('hostControls').querySelector('#phaseActionBtn').textContent = '🌙 Continue to Night'
-      document.getElementById('hostControls').querySelector('#phaseActionBtn').onclick = function() { continueNight() }
-      document.getElementById('phaseBanner').className = 'phase-banner phase-result'
-      document.getElementById('phaseBanner').textContent = '⚖️ Verdict'
+      currentPhase = 'day_results';
+      document.getElementById('hostControls').style.display = 'block';
+      document.getElementById('hostControls').querySelector('#phaseActionBtn').textContent = '🌙 Continue to Night';
+      document.getElementById('hostControls').querySelector('#phaseActionBtn').onclick = function() { continueNight(); };
+      document.getElementById('phaseBanner').className = 'phase-banner phase-result';
+      document.getElementById('phaseBanner').textContent = '⚖️ Verdict';
     }
 
     function continueNight() {
-      currentRound++
-      currentPhase = 'night'
-      startNightPhase()
+      currentRound++;
+      currentPhase = 'night';
+      startNightPhase();
     }
 
     function handleVictory(payload) {
-      clearInterval(phaseTimer)
-      document.getElementById('gameView').classList.add('hidden')
-      document.getElementById('victoryView').classList.remove('hidden')
-      document.getElementById('hostControls').style.display = 'none'
-      clearState()
-      document.getElementById('victoryEmoji').textContent = payload.winner === 'werewolf' ? '🐺' : '🏘️'
-      document.getElementById('victoryTitle').textContent = payload.winner === 'werewolf' ? 'Werewolves Win!' : 'Village Wins!'
-      document.getElementById('victoryTitle').style.color = payload.winner === 'werewolf' ? 'var(--accent-werewolf)' : 'var(--accent-villager)'
-      document.getElementById('victorySubtitle').textContent = payload.winner === 'werewolf' ? 'The werewolves have taken over the village!' : 'The villagers have rooted out all werewolves!'
+      clearInterval(phaseTimer);
+      if (actionPollInterval) clearInterval(actionPollInterval);
+      document.getElementById('gameView').classList.add('hidden');
+      document.getElementById('victoryView').classList.remove('hidden');
+      document.getElementById('hostControls').style.display = 'none';
+      localStorage.removeItem('mafia_host_room');
+      document.getElementById('victoryEmoji').textContent = payload.winner === 'werewolf' ? '🐺' : '🏘️';
+      document.getElementById('victoryTitle').textContent = payload.winner === 'werewolf' ? 'Werewolves Win!' : 'Village Wins!';
+      document.getElementById('victoryTitle').style.color = payload.winner === 'werewolf' ? 'var(--accent-werewolf)' : 'var(--accent-villager)';
+      document.getElementById('victorySubtitle').textContent = payload.winner === 'werewolf' ? 'The werewolves have taken over the village!' : 'The villagers have rooted out all werewolves!';
       if (payload.eliminatedPlayer) {
-        document.getElementById('victorySubtitle').textContent += ' ' + payload.eliminatedPlayer.name + ' was the last elimination.'
+        document.getElementById('victorySubtitle').textContent += ' ' + payload.eliminatedPlayer.name + ' was the last elimination.';
       }
     }
 
-    async function updateAliveDots() {
-      var sb = getSupabase()
-      var { data: players } = await sb.from('players').select('id, name, alive').eq('room_code', roomCode).order('joined_at')
-      if (!players) return
-      var alive = players.filter(function(p) { return p.alive })
-      document.getElementById('aliveCounter').textContent = alive.length
-      document.getElementById('gamePlayerDots').innerHTML = players.map(function(p) {
-        return '<div class="alive-dot ' + (p.alive ? '' : 'dead') + '" title="' + p.name + '">' + (p.alive ? '' : '💀') + '</div>'
-      }).join('')
+    function updateAliveDots() {
+      if (!roomCode) return;
+      api('/api/players?room_code=' + roomCode).then(function(players) {
+        if (!players) return;
+        var alive = players.filter(function(p) { return p.alive; });
+        var aliveCount = document.getElementById('aliveCounter');
+        if (aliveCount) aliveCount.textContent = alive.length;
+        var dots = document.getElementById('gamePlayerDots');
+        if (dots) {
+          dots.innerHTML = players.map(function(p) {
+            return '<div class="alive-dot ' + (p.alive ? '' : 'dead') + '" title="' + p.name + '">' + (p.alive ? '' : '💀') + '</div>';
+          }).join('');
+        }
+      }).catch(function() {});
     }
 
-    async function syncToGameState(room) {
-      currentPhase = room.phase
-      currentRound = room.round || 1
-      updateAliveDots()
-      document.getElementById('gameView').classList.remove('hidden')
-      document.getElementById('nightHostContent').classList.add('hidden')
+    function syncToGameState(room) {
+      currentPhase = room.phase;
+      currentRound = room.round || 1;
+      updateAliveDots();
+      document.getElementById('gameView').classList.remove('hidden');
+      document.getElementById('nightHostContent').classList.add('hidden');
       switch (room.phase) {
-        case 'night': startNightPhase(); break
+        case 'night': startNightPhase(); break;
         case 'day_discussion':
-          document.getElementById('gameContent').innerHTML = '<div class="card fade-in"><h2>☀️ Day Discussion</h2><p style="color:var(--text-secondary);">Discussion in progress.</p></div>'
-          document.getElementById('hostControls').style.display = 'block'
-          document.getElementById('hostControls').querySelector('#phaseActionBtn').textContent = '🗳️ Start Voting'
-          document.getElementById('hostControls').querySelector('#phaseActionBtn').onclick = function() { startVotePhase() }
-          document.getElementById('phaseBanner').className = 'phase-banner phase-day'
-          document.getElementById('phaseBanner').textContent = '☀️ Day ' + currentRound
-          break
+          document.getElementById('gameContent').innerHTML = '<div class="card fade-in"><h2>☀️ Day Discussion</h2><p style="color:var(--text-secondary);">Discussion in progress.</p></div>';
+          document.getElementById('hostControls').style.display = 'block';
+          document.getElementById('hostControls').querySelector('#phaseActionBtn').textContent = '🗳️ Start Voting';
+          document.getElementById('hostControls').querySelector('#phaseActionBtn').onclick = function() { startVotePhase(); };
+          document.getElementById('phaseBanner').className = 'phase-banner phase-day';
+          document.getElementById('phaseBanner').textContent = '☀️ Day ' + currentRound;
+          break;
         case 'day_vote':
-          document.getElementById('gameContent').innerHTML = '<p style="color:var(--text-secondary);text-align:center;">🗳️ Voting in progress...</p>'
-          document.getElementById('hostControls').style.display = 'block'
-          document.getElementById('hostControls').querySelector('#phaseActionBtn').textContent = '📊 End Vote & Tally'
-          document.getElementById('hostControls').querySelector('#phaseActionBtn').onclick = function() { processDay() }
-          document.getElementById('phaseBanner').className = 'phase-banner phase-vote'
-          document.getElementById('phaseBanner').textContent = '🗳️ Vote — Round ' + currentRound
-          break
+          document.getElementById('gameContent').innerHTML = '<p style="color:var(--text-secondary);text-align:center;">🗳️ Voting in progress...</p>';
+          document.getElementById('hostControls').style.display = 'block';
+          document.getElementById('hostControls').querySelector('#phaseActionBtn').textContent = '📊 End Vote & Tally';
+          document.getElementById('hostControls').querySelector('#phaseActionBtn').onclick = function() { processDay(); };
+          document.getElementById('phaseBanner').className = 'phase-banner phase-vote';
+          document.getElementById('phaseBanner').textContent = '🗳️ Vote — Round ' + currentRound;
+          break;
         case 'day_results':
-          document.getElementById('gameContent').innerHTML = '<p style="color:var(--text-secondary);text-align:center;">⚖️ Results posted.</p>'
-          document.getElementById('hostControls').style.display = 'block'
-          document.getElementById('hostControls').querySelector('#phaseActionBtn').textContent = '🌙 Continue to Night'
-          document.getElementById('hostControls').querySelector('#phaseActionBtn').onclick = function() { continueNight() }
-          break
+          document.getElementById('gameContent').innerHTML = '<p style="color:var(--text-secondary);text-align:center;">⚖️ Results posted.</p>';
+          document.getElementById('hostControls').style.display = 'block';
+          document.getElementById('hostControls').querySelector('#phaseActionBtn').textContent = '🌙 Continue to Night';
+          document.getElementById('hostControls').querySelector('#phaseActionBtn').onclick = function() { continueNight(); };
+          break;
         case 'victory':
-          document.getElementById('gameView').classList.add('hidden')
-          document.getElementById('victoryView').classList.remove('hidden')
-          document.getElementById('victoryEmoji').textContent = '🏆'
-          document.getElementById('victoryTitle').textContent = room.winner === 'werewolf' ? 'Werewolves Win!' : 'Village Wins!'
-          break
+          document.getElementById('gameView').classList.add('hidden');
+          document.getElementById('victoryView').classList.remove('hidden');
+          document.getElementById('victoryEmoji').textContent = '🏆';
+          document.getElementById('victoryTitle').textContent = room.winner === 'werewolf' ? 'Werewolves Win!' : 'Village Wins!';
+          break;
       }
+    }
+
+    function reconnectRoom() {
+      var code = document.getElementById('reconnectCode').value.trim().toUpperCase();
+      if (!code || code.length < 4) return;
+      api('/api/rooms/' + code).then(function(data) {
+        if (!data || !data.room_code) { alert('Room not found'); return; }
+        roomCode = code;
+        hostToken = prompt('Enter your host token:');
+        if (!hostToken) { alert('Host token required'); return; }
+        localStorage.setItem('mafia_host_room', JSON.stringify({ roomCode: roomCode, hostToken: hostToken, roomId: data.id }));
+        document.getElementById('reconnectView').classList.add('hidden');
+        if (data.phase === 'lobby' || !data.phase) {
+          document.getElementById('lobbyView').classList.remove('hidden');
+          document.getElementById('roomCodeDisplay').textContent = roomCode;
+          generateQR();
+          startPolling();
+          updatePlayerList();
+        } else {
+          document.getElementById('gameView').classList.remove('hidden');
+          syncToGameState(data);
+        }
+      }).catch(function() { alert('Room not found'); });
     }
   </script>
 </body>

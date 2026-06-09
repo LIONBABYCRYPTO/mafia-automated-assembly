@@ -1,85 +1,109 @@
 # 🎭 Mafia: The Automated Assembly
 
-A live, phone-powered social deduction game for **100+ players** in a classroom. Everyone gets a secret role on their phone; the projector becomes the public "town square". No manual narrator needed.
+Live phone-powered social deduction game for large groups (6–100 players). No app download needed — just a browser.
+
+**Host opens the page on a projector → players scan QR with their phones → game plays itself.**
 
 ## How It Works
 
-1. **Host** opens `index.html` on the classroom projector → a room code & QR appear
-2. **100 players** scan the QR, enter their name, receive a secret role
-3. **Night phase**: Werewolves silently pick a victim on their phones; the Seer investigates; the Doctor protects
-4. **Day phase**: The projector announces who was attacked. Everyone discusses IRL. Then all vote on their phones to eliminate a suspect
-5. The app reveals their role on the big screen and checks win conditions
-6. Repeat until Werewolves outnumber Villagers or all Werewolves are dead
+| Component | Stack |
+|-----------|-------|
+| Frontend | GitHub Pages (static HTML/JS/CSS) |
+| Backend | Cloudflare Workers |
+| Database | Cloudflare D1 (SQLite) |
+| Auth | Anonymous tokens (server-generated) |
+| Real-time | 2-second polling via API |
 
-## Tech Stack
+No VPS, no Docker, no monthly costs.
 
-| Component | Technology |
-|-----------|------------|
-| Frontend | Vanilla HTML/CSS/JS (2 pages: host + player) |
-| Hosting | GitHub Pages (static) |
-| Backend | Supabase (Postgres, Realtime, Edge Functions) |
-| Auth | Supabase Anonymous Auth |
-| Real-time | Supabase Broadcast + Postgres Realtime |
-| QR | qrcodejs library |
+## Quick Start
 
-## Setup
-
-### 1. Supabase Project
-
-1. Create a free Supabase project at [supabase.com](https://supabase.com)
-2. Go to **SQL Editor** → run `supabase/migrations/001_schema.sql`
-3. Go to **Project Settings → API** → copy the **Project URL** and **anon key**
-4. Go to **Authentication → Settings** → enable **Anonymous sign-ins**
-5. Go to **Edge Functions** → deploy the 3 functions:
-   - `assign-roles`
-   - `process-night`
-   - `process-day`
-
-### 2. Configuration
-
-Copy `js/config.template.js` to `js/config.js` and fill in your Supabase credentials:
-
-```js
-window.SUPABASE_URL = 'https://your-project.supabase.co';
-window.SUPABASE_ANON_KEY = 'your-anon-key';
-```
-
-### 3. Deploy to GitHub Pages
+### 1. Deploy the Worker
 
 ```bash
-# Push to GitHub
-git push origin main
-
-# Enable GitHub Pages:
-# Settings → Pages → Source: GitHub Actions (or deploy from root)
+cd worker
+npm install
+npx wrangler d1 create mafia-game-db
+npx wrangler d1 execute mafia-game-db --file=schema.sql
+npx wrangler deploy
 ```
 
-### 4. Game Flow
+Copy the deployed URL (e.g. `https://mafia-game.xxx.workers.dev`).
 
-| Phase | Duration (configurable) | What happens |
-|-------|------------------------|--------------|
-| Night | 60s | Werewolves vote victim, Seer investigates, Doctor protects |
-| Day Discussion | 180s | Everyone discusses in-person |
-| Day Vote | 60s | Everyone votes on their phone |
-| Results | 15s | Role revealed on projector |
+### 2. Update Frontend Config
 
-## Roles
+Edit `js/config.js`:
 
-| Role | Team | Ability |
-|------|------|---------|
-| 🏘️ **Villager** | Village | Find and vote out werewolves |
-| 🐺 **Werewolf** | Werewolves | Eliminate one player each night |
-| 🔮 **Seer** | Village | Investigate one player each night |
-| 💉 **Doctor** | Village | Protect one player each night |
+```js
+window.API_URL = "https://mafia-game.xxx.workers.dev";
+```
 
-## Win Conditions
+### 3. Deploy Frontend to GitHub Pages
 
-- **Village wins**: All werewolves eliminated
-- **Werewolves win**: Werewolves outnumber or equal villagers
+```bash
+git add .
+git commit -m "deploy"
+git push
+```
 
-## Privacy & Trust
+Enable GitHub Pages in repo settings (Source: main branch, root folder).
 
-- Players sign in anonymously — no accounts needed
-- Roles are assigned server-side via Edge Functions
-- RLS policies ensure only you can see your own role (until death)
-- The host never sees who has which role
+### 4. Play!
+
+Open `https://your-username.github.io/mafia-automated-assembly/` on a projector.
+
+## Development
+
+```bash
+# Run Worker locally
+cd worker
+npm run dev
+
+# Open locally
+open http://localhost:8787
+```
+
+## Game Phases
+
+1. **Lobby** — Players scan QR, enter name, join room
+2. **Night** — Werewolves pick victim, Seer investigates, Doctor protects
+3. **Day Discussion** — Everyone talks IRL
+4. **Vote** — Players vote on phones to eliminate a suspect
+5. **Resolution** — Role revealed, check win condition
+6. **Repeat** until werewolves outnumber villagers or all werewolves are dead
+
+## Architecture
+
+```
+GitHub Pages                  Cloudflare Workers
+┌─────────────────┐           ┌─────────────────────┐
+│ index.html       │──fetch──→│ /api/rooms           │
+│ player.html      │          │ /api/players         │
+│ js/config.js     │          │ /api/player-roles    │
+│ js/game-state.js │          │ /api/night-actions   │
+│ css/style.css    │          │ /api/day-votes       │
+└─────────────────┘          │ /api/assign-roles    │
+                             │ /api/process-night   │
+                             │ /api/process-day     │
+                             └──────────┬────────────┘
+                                        │
+                             ┌──────────▼────────────┐
+                             │  Cloudflare D1 (SQLite)│
+                             └───────────────────────┘
+```
+
+## Cost Estimate
+
+| Service | Cost |
+|---------|------|
+| GitHub Pages | Free |
+| Cloudflare Workers (free tier) | Free — 100k req/day |
+| Cloudflare D1 (free tier) | Free — 5GB storage, 5M read rows/day |
+| **Total** | **$0/month** |
+
+## Security
+
+- Secret roles stored server-side, never leaked to client
+- Anonymous tokens verify player identity
+- APIs validate player owns their actions (can't vote for someone else)
+- No Supabase, no third-party backend dependencies

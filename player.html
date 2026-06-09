@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Mafia - Join Game</title>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <link rel="stylesheet" href="css/style.css">
   <style>
     /* Phone-optimized */
@@ -18,631 +17,376 @@
 
     .role-card { text-align:center; padding:40px 20px; border-radius:var(--radius); margin:20px 0; border:3px solid; animation:roleReveal 0.8s ease forwards; }
     .role-emoji { font-size: 5rem; display:block; margin-bottom:16px; }
-    .role-desc { font-size:1rem; color:var(--text-secondary); margin-top:8px; line-height:1.5; }
+    .role-name { font-size: 2rem; font-weight:700; }
+    .role-desc { color:var(--text-secondary); font-size:1rem; margin-top:8px; }
+    .role-werewolf { background:rgba(231,76,60,0.12); border-color:var(--accent-werewolf); }
+    .role-villager { background:rgba(46,204,113,0.12); border-color:var(--accent-villager); }
+    .role-seer { background:rgba(52,152,219,0.12); border-color:var(--accent-seer); }
+    .role-doctor { background:rgba(255,107,157,0.12); border-color:var(--accent-doctor); }
 
     .night-screen { text-align:center; padding:40px 20px; }
-    .night-screen .moon { font-size:4rem; display:block; margin-bottom:16px; }
-    .night-screen .instruction { font-size:1.1rem; margin:16px 0; line-height:1.5; }
+    .action-list { display:flex; flex-direction:column; gap:8px; margin:20px 0; max-height:50vh; overflow-y:auto; }
+    .action-target { padding:14px; border-radius:var(--radius-sm); border:1px solid var(--border); background:var(--bg-surface); cursor:pointer; font-size:1.1rem; transition:all 0.2s; }
+    .action-target.selected { border-color:var(--accent-gold); background:rgba(255,215,0,0.1); }
+    .selected-indicator { color:var(--accent-gold); margin-left:8px; }
 
-    .action-list { display:flex; flex-direction:column; gap:10px; margin:16px 0; }
-    .action-btn { padding:16px 20px; background:var(--bg-surface); border:2px solid var(--border); border-radius:var(--radius-sm); color:var(--text-primary); font-size:1.1rem; cursor:pointer; transition:all 0.2s; text-align:left; }
-    .action-btn:hover, .action-btn:active { background:#2a2a44; border-color:var(--accent-gold); }
-    .action-btn.selected { border-color:var(--accent-gold); background:#2a2a33; }
-    .action-btn:disabled { opacity:0.5; cursor:not-allowed; }
+    .day-screen { text-align:center; padding:20px; }
+    .vote-list { display:flex; flex-direction:column; gap:8px; margin:16px 0; }
+    .vote-target { padding:14px; border-radius:var(--radius-sm); border:1px solid var(--border); background:var(--bg-surface); cursor:pointer; font-size:1.1rem; }
+    .vote-target.selected { border-color:var(--accent-gold); background:rgba(255,215,0,0.1); }
+    .vote-target.voted { border-color:var(--accent-villager); opacity:0.5; cursor:default; }
 
-    .confirm-btn { font-size:1.2rem; padding:18px; margin-top:8px; }
+    .eliminated-overlay { text-align:center; padding:40px 20px; }
+    .btn-vote { margin-top:20px; }
 
     .waiting-screen { text-align:center; padding:60px 20px; }
-    .waiting-screen .pulse-dot { font-size:3rem; animation:pulse 1.5s infinite; }
-
-    .vote-list { display:flex; flex-direction:column; gap:10px; margin:16px 0; }
-    .result-screen { text-align:center; padding:40px 20px; }
-    .result-screen .big-text { font-size:2rem; margin:16px 0; }
-
-    .seer-result { padding:20px; border-radius:var(--radius); margin:16px 0; font-size:1.3rem; font-weight:600; }
-    .seer-result.innocent { background:rgba(79,195,161,0.2); border:2px solid var(--accent-villager); color:var(--accent-villager); }
-    .seer-result.guilty { background:rgba(231,76,60,0.2); border:2px solid var(--accent-werewolf); color:var(--accent-werewolf); }
-
-    .phase-indicator { text-align:center; padding:8px; font-size:0.9rem; color:var(--text-secondary); }
-
-    .eliminated-overlay {
-      position:fixed; top:0; left:0; right:0; bottom:0;
-      background:rgba(0,0,0,0.85);
-      display:flex; flex-direction:column;
-      align-items:center; justify-content:center;
-      z-index:100; padding:20px; text-align:center;
-    }
-    .eliminated-overlay h2 { font-size:2rem; margin-bottom:12px; }
-    .eliminated-overlay .ghost { font-size:4rem; }
-
-    .action-confirmed { text-align:center; padding:30px; }
-    .action-confirmed .check { font-size:4rem; }
-    .action-confirmed .wait-text { color:var(--text-secondary); margin-top:16px; }
-
-    .day-intro-text { font-size:1.2rem; color:var(--text-secondary); margin-top:16px; line-height:1.6; }
-
-    @keyframes fadeInUp { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
-    .fade-in-up { animation:fadeInUp 0.4s ease; }
+    .waiting-screen .big { font-size:4rem; margin-bottom:16px; }
   </style>
 </head>
 <body>
-  <div class="player-view" id="app">
+  <div class="player-view">
     <!-- JOIN SCREEN -->
     <div id="joinScreen" class="join-screen">
       <h1>🎭 Mafia</h1>
-      <p style="margin-bottom: 24px; color: var(--text-secondary);">Enter your name to join the game</p>
-      <input type="text" id="playerNameInput" class="lobby-input name-input" placeholder="Your name..." maxlength="20" autocomplete="off">
-      <button class="btn btn-primary join-btn btn-block" id="joinBtn" onclick="joinGame()">Join Game</button>
-      <p id="joinError" style="color: var(--danger); margin-top: 8px; min-height: 24px;"></p>
+      <p style="color:var(--text-secondary);margin-bottom:20px;">Room: <strong id="joinRoomCode">---</strong></p>
+      <input type="text" id="playerNameInput" class="name-input lobby-input" placeholder="Your name..." maxlength="16" autocomplete="off">
+      <button class="btn btn-primary btn-lg join-btn" id="joinBtn" onclick="joinGame()">Join Game</button>
+      <p id="joinError" style="color:var(--accent-werewolf);margin-top:8px;" class="hidden"></p>
     </div>
 
-    <!-- WAITING FOR GAME -->
+    <!-- WAITING SCREEN -->
     <div id="waitingScreen" class="waiting-screen hidden">
-      <div class="pulse-dot">⏳</div>
-      <h2>Waiting for the game to start…</h2>
-      <p id="waitingRoomCode" style="color: var(--text-secondary);"></p>
+      <div class="big">🎭</div>
+      <h2>Waiting for host to start the game...</h2>
+      <p style="color:var(--text-secondary);margin-top:8px;" id="waitingStatus">Players in room: <span id="waitingCount">0</span></p>
     </div>
 
     <!-- ROLE REVEAL -->
-    <div id="roleRevealScreen" class="hidden">
+    <div id="roleReveal" class="hidden" style="text-align:center;padding:40px 20px;">
       <div id="roleCard" class="role-card">
-        <span class="role-emoji" id="roleEmoji">🌙</span>
-        <h2 id="roleTitle" class="role-title">Villager</h2>
-        <p id="roleDescription" class="role-desc">Use your voice and intuition.</p>
-      </div>
-      <button class="btn btn-primary btn-block confirm-btn" onclick="acknowledgeRole()">I Understand My Role</button>
-    </div>
-
-    <!-- NIGHT PHASE -->
-    <div id="nightScreen" class="hidden">
-      <div class="phase-indicator">🌙 Night <span id="nightRound">1</span></div>
-      <div class="night-screen" id="nightContent">
-        <span class="moon">🌙</span>
-        <div id="nightActionArea"></div>
+        <span id="roleEmoji" class="role-emoji">🌙</span>
+        <div id="roleName" class="role-name">Villager</div>
+        <div id="roleDesc" class="role-desc">Find and eliminate the werewolves!</div>
       </div>
     </div>
 
-    <!-- DAY DISCUSSION -->
-    <div id="dayDiscussionScreen" class="hidden">
-      <div class="phase-indicator">☀️ Day <span id="dayRound">1</span></div>
-      <div class="night-screen">
-        <span style="font-size: 3rem; display: block; margin-bottom: 16px;">☀️</span>
-        <h2>Discuss!</h2>
-        <p style="color: var(--text-secondary);" id="dayNightResult"></p>
+    <!-- NIGHT ACTION SCREEN -->
+    <div id="nightScreen" class="night-screen hidden">
+      <h2 id="nightTitle">🌙 Night Falls</h2>
+      <p style="color:var(--text-secondary);" id="nightRoleDesc">Close your eyes...</p>
+      <div id="nightActionArea"></div>
+      <button class="btn btn-primary btn-lg hidden" id="nightConfirmBtn" onclick="confirmNightAction()">✅ Confirm Action</button>
+      <p id="nightConfirmed" class="hidden" style="color:var(--accent-villager);margin-top:12px;">✅ Action submitted, waiting for host...</p>
+    </div>
+
+    <!-- DAY SCREEN -->
+    <div id="dayScreen" class="day-screen hidden">
+      <div id="discussionPhase">
+        <h2>☀️ Day</h2>
+        <p id="nightResult" style="font-size:1.2rem;margin:16px 0;"></p>
+        <p style="color:var(--text-secondary);" id="discussionTimer">Discuss! Host will start voting...</p>
+      </div>
+      <div id="votePhase" class="hidden">
+        <h2>🗳️ Vote to Eliminate</h2>
+        <div class="vote-list" id="voteList"></div>
+        <button class="btn btn-primary btn-lg btn-vote hidden" id="voteConfirmBtn" onclick="confirmVote()">✅ Confirm Vote</button>
+        <p id="votedConfirmed" class="hidden" style="color:var(--accent-villager);margin-top:12px;">✅ Vote cast</p>
       </div>
     </div>
 
-    <!-- VOTING -->
-    <div id="voteScreen" class="hidden">
-      <div class="phase-indicator">🗳️ Vote — Round <span id="voteRound">1</span></div>
-      <h3 style="text-align:center; margin-bottom: 12px;">Who do you suspect?</h3>
-      <div id="votePlayerList" class="vote-list"></div>
-      <button class="btn btn-primary btn-block confirm-btn" id="submitVoteBtn" onclick="submitVote()" disabled>Confirm Vote</button>
-      <p style="text-align:center;color:var(--text-secondary);font-size:0.9rem;margin-top:8px;" id="voteStatus">Select a player</p>
+    <!-- RESULT SCREEN -->
+    <div id="resultScreen" class="eliminated-overlay hidden">
+      <div id="eliminatedReveal"></div>
     </div>
 
-    <!-- DAY RESULTS -->
-    <div id="dayResultsScreen" class="hidden">
-      <div class="result-screen">
-        <h2>⚖️ Verdict</h2>
-        <div id="dayResultContent"></div>
-        <button class="btn btn-primary btn-block confirm-btn" id="ackDayResultBtn">Continue</button>
-      </div>
-    </div>
-
-    <!-- VICTORY -->
-    <div id="victoryScreen" class="hidden victory-screen">
-      <div class="emoji-big" id="playerVictoryEmoji">🏆</div>
-      <h1 id="playerVictoryTitle">Village Wins!</h1>
-      <p id="playerVictorySub" style="color: var(--text-secondary); font-size: 1.2rem; margin-bottom: 30px;">You win!</p>
-      <p style="color: var(--text-secondary);">Thanks for playing!</p>
-    </div>
-
-    <!-- ELIMINATED OVERLAY -->
-    <div id="eliminatedOverlay" class="eliminated-overlay hidden">
-      <div class="ghost">👻</div>
-      <h2>You have been eliminated</h2>
-      <p style="font-size: 1.2rem; color: var(--text-secondary); margin-top: 8px;" id="eliminatedRoleText">Your role: Villager</p>
-      <p style="color: var(--text-secondary); margin-top: 16px;">You can watch the rest of the game on the projector.</p>
+    <!-- VICTORY SCREEN -->
+    <div id="victoryScreen" class="eliminated-overlay hidden">
+      <div class="big" id="playerVictoryEmoji">🏆</div>
+      <h2 id="playerVictoryTitle">Village Wins!</h2>
+      <button class="btn btn-primary btn-lg" style="margin-top:30px;" onclick="location.href = location.pathname">Play Again</button>
     </div>
   </div>
 
   <script src="js/config.js"></script>
-  <script src="js/supabase-client.js"></script>
-  <script src="js/game-state.js"></script>
   <script>
     // ==========================================
-    // PLAYER CONTROLLER
+    // PLAYER CONTROLLER - Pure fetch() API, no Supabase
     // ==========================================
-    const urlParams = new URLSearchParams(window.location.search)
-    const roomCode = urlParams.get('room')
-    let playerId = null
-    let userId = null
-    let myRole = null
-    let isAlive = true
-    let selectedTarget = null
-    let seerResult = null
-    let nightSubmitted = false
+    var API_URL = window.API_URL || 'http://localhost:8787';
+    var roomCode = new URLSearchParams(window.location.search).get('room') || '';
+    var playerId = null;
+    var playerToken = null;
+    var playerRole = null;
+    var currentRound = 1;
+    var selectedTarget = null;
+    var pollInterval = null;
 
-    if (!roomCode) {
-      document.getElementById('app').innerHTML = `
-        <div class="join-screen" style="padding-top: 60px;">
-          <h1>❌ Invalid Game</h1>
-          <p style="color: var(--text-secondary);">No room code found. Please scan the QR code from the host screen.</p>
-        </div>
-      `
+    function esc(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+    function api(path, method, body) {
+      var opts = { method: method || 'GET', headers: { 'Content-Type': 'application/json' } };
+      if (body) opts.body = JSON.stringify(body);
+      if (playerToken) opts.headers['Authorization'] = 'Bearer ' + playerToken;
+      return fetch(API_URL + path, opts).then(function(r) { return r.json(); });
     }
 
-    // ==========================================
-    // JOIN GAME
-    // ==========================================
-    async function joinGame() {
-      const name = document.getElementById('playerNameInput').value.trim()
-      if (!name) {
-        document.getElementById('joinError').textContent = 'Please enter your name'
-        return
-      }
+    document.getElementById('joinRoomCode').textContent = roomCode || '---';
+    if (!roomCode) { document.getElementById('joinError').textContent = 'No room code in URL'; document.getElementById('joinError').classList.remove('hidden'); }
 
-      const joinBtn = document.getElementById('joinBtn')
-      joinBtn.disabled = true
-      joinBtn.textContent = 'Joining…'
+    // ── JOIN ──
+    function joinGame() {
+      var name = document.getElementById('playerNameInput').value.trim();
+      if (!name) { document.getElementById('joinError').textContent = 'Enter your name'; document.getElementById('joinError').classList.remove('hidden'); return; }
 
-      // Anonymous auth
-      const sb = getSupabase()
-      const { data: authData, error: authError } = await sb.auth.signInAnonymously()
-      if (authError) {
-        document.getElementById('joinError').textContent = 'Auth error: ' + authError.message
-        joinBtn.disabled = false; joinBtn.textContent = 'Join Game'
-        return
-      }
-      userId = authData.user.id
+      var btn = document.getElementById('joinBtn');
+      btn.disabled = true; btn.textContent = 'Joining...';
 
-      // Insert player
-      const { data, error } = await sb
-        .from('players')
-        .insert({ room_code: roomCode, user_id: userId, name })
-        .select()
-        .single()
-
-      if (error) {
-        if (error.code === '23505') {
-          document.getElementById('joinError').textContent = 'You already joined! Try another name.'
+      api('/api/players', 'POST', { room_code: roomCode, name: name }).then(function(data) {
+        if (data && data.id) {
+          playerId = data.id;
+          playerToken = data.player_token;
+          document.getElementById('joinScreen').classList.add('hidden');
+          document.getElementById('waitingScreen').classList.remove('hidden');
+          startPolling();
         } else {
-          document.getElementById('joinError').textContent = 'Error: ' + error.message
+          document.getElementById('joinError').textContent = data && data.error ? data.error : 'Join failed';
+          document.getElementById('joinError').classList.remove('hidden');
+          btn.disabled = false; btn.textContent = 'Join Game';
         }
-        joinBtn.disabled = false; joinBtn.textContent = 'Join Game'
-        return
-      }
-
-      playerId = data.id
-      document.getElementById('joinScreen').classList.add('hidden')
-      document.getElementById('waitingScreen').classList.remove('hidden')
-      document.getElementById('waitingRoomCode').textContent = `Room: ${roomCode}`
-
-      setupListeners(sb)
-
-      // Check if game already started
-      const { data: room } = await sb.from('rooms').select('phase, round').eq('room_code', roomCode).single()
-      if (room && room.phase !== 'lobby') {
-        await loadMyRole(sb)
-      }
+      }).catch(function(err) {
+        document.getElementById('joinError').textContent = 'Connection error';
+        document.getElementById('joinError').classList.remove('hidden');
+        btn.disabled = false; btn.textContent = 'Join Game';
+      });
     }
 
-    // ==========================================
-    // LISTENERS
-    // ==========================================
-    function setupListeners(sb) {
-      // Watch for role insertion
-      sb.channel(`player-role:${playerId}`)
-        .on('postgres_changes',
-          { event: 'INSERT', schema: 'public', table: 'player_roles', filter: `player_id=eq.${playerId}` },
-          async () => await loadMyRole(sb)
-        )
-        .subscribe()
+    // ── POLLING ──
+    function startPolling() {
+      if (pollInterval) clearInterval(pollInterval);
+      pollInterval = setInterval(pollGameState, 2000);
+      pollGameState();
+    }
 
-      // Broadcast channel
-      const channel = getRoomChannel(roomCode)
-      channel.on('broadcast', { event: 'phase_change' }, (msg) => handlePhaseChange(msg.payload))
-      channel.on('broadcast', { event: 'night_result' }, (msg) => handleNightResultBroadcast(msg.payload))
-      channel.on('broadcast', { event: 'day_result' }, (msg) => handleDayResultBroadcast(msg.payload))
-      channel.on('broadcast', { event: 'victory' }, (msg) => handleVictoryBroadcast(msg.payload))
-      channel.subscribe()
+    function pollGameState() {
+      if (!roomCode) return;
+      api('/api/rooms/' + roomCode).then(function(room) {
+        if (!room || !room.phase) return;
 
-      // Fallback: rooms table changes
-      sb.channel(`room-state:${roomCode}`)
-        .on('postgres_changes',
-          { event: 'UPDATE', schema: 'public', table: 'rooms', filter: `room_code=eq.${roomCode}` },
-          async (payload) => {
-            const newPhase = payload.new.phase
-            if (!newPhase || newPhase === 'lobby') return
-            if (!myRole) await loadMyRole(sb)
-            else if (newPhase === 'night') {
-              // day_result broadcast already handled transition
-            } else if (newPhase === 'day_discussion' || newPhase === 'day_vote' || newPhase === 'day_results') {
-              handlePhaseChange({ phase: newPhase, round: payload.new.round })
-            } else if (newPhase === 'victory') {
-              // Handled by broadcast
-            }
+        if (room.phase === 'victory') {
+          showVictory(room.winner);
+          return;
+        }
+
+        if (!playerRole && room.phase !== 'lobby') {
+          fetchRole();
+          return;
+        }
+
+        if (playerRole) {
+          switch (room.phase) {
+            case 'night':
+              showNightPhase(room.round);
+              break;
+            case 'day_discussion':
+              showDayDiscussion();
+              break;
+            case 'day_vote':
+              showVotePhase();
+              break;
+            case 'day_results':
+              // handled by dayResults
+              break;
           }
-        )
-        .subscribe()
+          currentRound = room.round || 1;
+        }
+
+        // check if player is dead
+        if (playerId) {
+          api('/api/players?room_code=' + roomCode).then(function(players) {
+            if (!players) return;
+            var me = players.find(function(p) { return p.id === playerId; });
+            if (me && !me.alive && room.phase !== 'victory') {
+              showEliminated();
+            }
+          }).catch(function() {});
+        }
+      }).catch(function() {});
     }
 
-    // ==========================================
-    // ROLE
-    // ==========================================
-    async function loadMyRole(sb) {
-      if (!sb) sb = getSupabase()
-      const { data, error } = await sb.from('player_roles').select('role').eq('player_id', playerId).single()
-      if (error || !data) return false
-
-      myRole = data.role
-
-      const { data: player } = await sb.from('players').select('alive').eq('id', playerId).single()
-      isAlive = player ? player.alive : true
-
-      showRoleReveal()
-      return true
+    function fetchRole() {
+      if (!playerId) return;
+      api('/api/player-roles?player_id=' + playerId).then(function(roles) {
+        if (roles && roles.length > 0) {
+          playerRole = roles[0].role;
+          document.getElementById('waitingScreen').classList.add('hidden');
+          showRoleReveal(playerRole);
+        }
+      }).catch(function() {});
     }
 
-    function showRoleReveal() {
-      document.getElementById('waitingScreen').classList.add('hidden')
-      if (!isAlive) { showEliminated(); return }
+    // ── ROLE REVEAL ──
+    function showRoleReveal(role) {
+      var emojis = { werewolf: '🐺', villager: '🧑‍🌾', seer: '🔮', doctor: '💉' };
+      var names = { werewolf: 'Werewolf', villager: 'Villager', seer: 'Seer', doctor: 'Doctor' };
+      var descs = {
+        werewolf: 'Eliminate villagers at night without being caught.',
+        villager: 'Find and vote out the werewolves during the day.',
+        seer: 'Investigate one player each night to learn their true identity.',
+        doctor: 'Protect one player each night from the werewolves\' attack.'
+      };
 
-      document.getElementById('roleRevealScreen').classList.remove('hidden')
-      const config = ROLE_CONFIG[myRole]
-      const card = document.getElementById('roleCard')
-      card.style.borderColor = config.color
-      document.getElementById('roleEmoji').textContent = config.emoji
-      document.getElementById('roleTitle').textContent = config.name
-      document.getElementById('roleTitle').style.color = config.color
-      document.getElementById('roleDescription').textContent = config.description
+      document.getElementById('roleEmoji').textContent = emojis[role] || '❓';
+      document.getElementById('roleName').textContent = names[role] || 'Unknown';
+      document.getElementById('roleDesc').textContent = descs[role] || '';
+      var card = document.getElementById('roleCard');
+      card.className = 'role-card role-' + role;
+      document.getElementById('roleReveal').classList.remove('hidden');
     }
 
-    function acknowledgeRole() {
-      document.getElementById('roleRevealScreen').classList.add('hidden')
-      getSupabase().from('rooms').select('phase, round').eq('room_code', roomCode).single()
-        .then(({ data }) => {
-          if (data && data.phase !== 'lobby') handlePhaseChange({ phase: data.phase, round: data.round })
-          else showWaiting()
-        })
-    }
+    // ── NIGHT ──
+    function showNightPhase(round) {
+      currentRound = round;
+      document.getElementById('dayScreen').classList.add('hidden');
+      document.getElementById('resultScreen').classList.add('hidden');
+      document.getElementById('nightScreen').classList.remove('hidden');
 
-    function showWaiting() { document.getElementById('waitingScreen').classList.remove('hidden') }
+      var roleSpecific = {
+        werewolf: { emoji: '🐺', title: '🌙 Night ' + round + ' — Choose your victim', desc: 'Select a player to eliminate', actions: ['kill'] },
+        seer: { emoji: '🔮', title: '🌙 Night ' + round + ' — Investigate', desc: 'Select a player to investigate', actions: ['investigate'] },
+        doctor: { emoji: '💉', title: '🌙 Night ' + round + ' — Protect', desc: 'Select a player to save', actions: ['protect'] },
+        villager: { emoji: '🌙', title: 'Night ' + round, desc: 'Night falls, close your eyes...', actions: [] }
+      };
 
-    function showEliminated() {
-      document.getElementById('eliminatedOverlay').classList.remove('hidden')
-      const roleName = myRole ? (ROLE_CONFIG[myRole]?.name || myRole) : 'Unknown'
-      document.getElementById('eliminatedRoleText').textContent = `Your role was: ${roleName}`
-    }
+      var config = roleSpecific[playerRole] || roleSpecific.villager;
+      document.getElementById('nightTitle').textContent = config.title;
+      document.getElementById('nightRoleDesc').textContent = config.desc;
 
-    // ==========================================
-    // PHASE HANDLING
-    // ==========================================
-    function hideAllScreens() {
-      ;['roleRevealScreen','nightScreen','dayDiscussionScreen','voteScreen','dayResultsScreen','victoryScreen','waitingScreen'].forEach(id => {
-        const el = document.getElementById(id)
-        if (el) el.classList.add('hidden')
-      })
-      document.getElementById('eliminatedOverlay')?.classList.add('hidden')
-    }
-
-    function handlePhaseChange(payload) {
-      if (!isAlive && payload.phase !== 'victory') {
-        hideAllScreens()
-        showEliminated()
-        return
-      }
-      hideAllScreens()
-      if (!isAlive && payload.phase !== 'victory') { showEliminated(); return }
-
-      switch (payload.phase) {
-        case 'night': showNightPhase(payload.round || 1); break
-        case 'day_discussion':
-          // Re-check alive status
-          getSupabase().from('players').select('alive').eq('id', playerId).single().then(({ data }) => {
-            if (data && !data.alive) { isAlive = false; hideAllScreens(); showEliminated(); return }
-            showDayDiscussion(payload.round || 1)
-          })
-          break
-        case 'day_vote': showVoting(payload.round || 1); break
-        case 'day_results': break // Handled by broadcast
-        default: showWaiting()
-      }
-    }
-
-    // ==========================================
-    // NIGHT
-    // ==========================================
-    async function showNightPhase(round) {
-      seerResult = null
-      nightSubmitted = false
-      document.getElementById('nightScreen').classList.remove('hidden')
-      document.getElementById('nightRound').textContent = round
-      const area = document.getElementById('nightActionArea')
-
-      if (myRole === ROLES.VILLAGER) {
-        area.innerHTML = `
-          <div class="instruction">🌙 Night falls. Close your eyes and wait for dawn.</div>
-          <div style="margin-top: 40px;">
-            <div style="font-size: 3rem; animation: pulse 2s infinite;">💤</div>
-            <p style="color: var(--text-secondary); margin-top: 16px;">The werewolves are moving…</p>
-          </div>`
-      } else if (myRole === ROLES.WEREWOLF) {
-        area.innerHTML = `
-          <div class="instruction">🐺 Choose a victim to eliminate tonight.</div>
-          <p style="color: var(--text-secondary); font-size: 0.9rem;">Pick your target.</p>
-          <div id="werewolfTargetList" class="action-list"></div>
-          <button class="btn btn-danger btn-block confirm-btn" id="submitNightKillBtn" onclick="submitNightKill()" disabled>🐺 Attack!</button>
-          <p style="text-align:center;color:var(--text-secondary);font-size:0.9rem;margin-top:8px;" id="nightKillStatus">Select a target</p>`
-        selectedTarget = null
-        await loadTargetList('werewolfTargetList', (id, name) => {
-          selectedTarget = id
-          document.querySelectorAll('#werewolfTargetList .action-btn').forEach(b => b.classList.remove('selected'))
-          event.currentTarget.classList.add('selected')
-          document.getElementById('submitNightKillBtn').disabled = false
-          document.getElementById('nightKillStatus').textContent = `Target: ${name}`
-        })
-      } else if (myRole === ROLES.SEER) {
-        area.innerHTML = `
-          <div class="instruction">🔮 Investigate one player.</div>
-          <p style="color: var(--text-secondary); font-size: 0.9rem;">You'll learn if they're a werewolf.</p>
-          <div id="seerTargetList" class="action-list"></div>
-          <button class="btn btn-primary btn-block confirm-btn" id="submitSeerBtn" onclick="submitSeerAction()" disabled>🔮 Investigate</button>
-          <p style="text-align:center;color:var(--text-secondary);font-size:0.9rem;margin-top:8px;" id="seerStatus">Select a player</p>`
-        selectedTarget = null
-        await loadTargetList('seerTargetList', (id, name) => {
-          selectedTarget = id
-          document.querySelectorAll('#seerTargetList .action-btn').forEach(b => b.classList.remove('selected'))
-          event.currentTarget.classList.add('selected')
-          document.getElementById('submitSeerBtn').disabled = false
-          document.getElementById('seerStatus').textContent = `Target: ${name}`
-        })
-      } else if (myRole === ROLES.DOCTOR) {
-        area.innerHTML = `
-          <div class="instruction">💉 Protect one player tonight.</div>
-          <p style="color: var(--text-secondary); font-size: 0.9rem;">You may protect yourself.</p>
-          <div id="doctorTargetList" class="action-list"></div>
-          <button class="btn btn-primary btn-block confirm-btn" id="submitDoctorBtn" onclick="submitDoctorAction()" disabled>💉 Protect</button>
-          <p style="text-align:center;color:var(--text-secondary);font-size:0.9rem;margin-top:8px;" id="doctorStatus">Select a player</p>`
-        selectedTarget = null
-        await loadTargetList('doctorTargetList', (id, name) => {
-          selectedTarget = id
-          document.querySelectorAll('#doctorTargetList .action-btn').forEach(b => b.classList.remove('selected'))
-          event.currentTarget.classList.add('selected')
-          document.getElementById('submitDoctorBtn').disabled = false
-          document.getElementById('doctorStatus').textContent = `Protecting: ${name}`
-        })
-      }
-    }
-
-    async function loadTargetList(containerId, onSelect) {
-      const sb = getSupabase()
-      const { data: players } = await sb
-        .from('players')
-        .select('id, name')
-        .eq('room_code', roomCode)
-        .eq('alive', true)
-
-      const container = document.getElementById(containerId)
-      if (!players || players.length === 0) {
-        container.innerHTML = '<p style="color: var(--text-secondary);">No valid targets.</p>'
-        return
+      if (config.actions.length === 0) {
+        document.getElementById('nightActionArea').innerHTML = '<p style="font-size:3rem;margin:30px 0;">💤</p>';
+        document.getElementById('nightConfirmBtn').classList.add('hidden');
+        return;
       }
 
-      // Filter out self for non-doctors
-      const filtered = myRole === ROLES.DOCTOR ? players : players.filter(p => p.id !== playerId)
+      // Show alive players to target
+      var area = document.getElementById('nightActionArea');
+      area.innerHTML = '<div class="action-list" id="nightTargetList"></div>';
+      document.getElementById('nightConfirmBtn').classList.add('hidden');
+      document.getElementById('nightConfirmed').classList.add('hidden');
+      selectedTarget = null;
 
-      container.innerHTML = filtered.map(p => {
-        const isSelf = p.id === playerId
-        return `<button class="action-btn" data-id="${p.id}" onclick="window._selectTarget(${p.id}, '${p.name.replace(/'/g, "\\'")}')">
-          ${isSelf ? '👤 ' : ''}${p.name}${isSelf ? ' (you)' : ''}
-        </button>`
-      }).join('')
-
-      window._selectTarget = onSelect
+      api('/api/players?room_code=' + roomCode).then(function(players) {
+        if (!players) return;
+        var alive = players.filter(function(p) { return p.alive && p.id !== playerId; });
+        var list = document.getElementById('nightTargetList');
+        if (!list) return;
+        list.innerHTML = alive.map(function(p) {
+          return '<div class="action-target" data-id="' + p.id + '" onclick="selectNightTarget(this, \'' + p.id + '\')">' + esc(p.name) + ' <span class="selected-indicator hidden">✓</span></div>';
+        }).join('');
+      }).catch(function() {});
     }
 
-    // ==========================================
-    // SUBMIT NIGHT ACTIONS
-    // ==========================================
-    function showNightConfirmed() {
-      const area = document.getElementById('nightActionArea')
-      area.innerHTML = `
-        <div class="action-confirmed fade-in-up">
-          <div class="check">✅</div>
-          <h3>Action Submitted!</h3>
-          <p class="wait-text">Waiting for other players...</p>
-        </div>`
+    function selectNightTarget(el, targetId) {
+      document.querySelectorAll('.action-target').forEach(function(e) { e.classList.remove('selected'); e.querySelector('.selected-indicator').classList.add('hidden'); });
+      el.classList.add('selected');
+      el.querySelector('.selected-indicator').classList.remove('hidden');
+      selectedTarget = targetId;
+      document.getElementById('nightConfirmBtn').classList.remove('hidden');
     }
 
-    async function submitNightKill() {
-      if (!selectedTarget) return
-      document.getElementById('submitNightKillBtn').disabled = true
-      document.getElementById('nightKillStatus').textContent = 'Submitted ✓'
-      await getSupabase().from('night_actions').upsert({
+    function confirmNightAction() {
+      if (!selectedTarget) return;
+
+      var actionMap = { werewolf: 'kill', seer: 'investigate', doctor: 'protect' };
+      var actionType = actionMap[playerRole];
+
+      api('/api/night-actions', 'POST', {
         room_code: roomCode,
-        round: parseInt(document.getElementById('nightRound').textContent),
         player_id: playerId,
         target_id: selectedTarget,
-        action_type: 'kill'
-      }, { onConflict: 'room_code,round,player_id' })
-      showNightConfirmed()
+        action_type: actionType
+      }).then(function(data) {
+        if (data && data.success) {
+          document.getElementById('nightConfirmBtn').classList.add('hidden');
+          document.getElementById('nightConfirmed').classList.remove('hidden');
+          document.querySelectorAll('.action-target').forEach(function(e) { e.style.opacity = '0.5'; e.style.cursor = 'default'; e.onclick = null; });
+        }
+      }).catch(function(err) {
+        alert('Error: ' + err.message);
+      });
     }
 
-    async function submitSeerAction() {
-      if (!selectedTarget) return
-      document.getElementById('submitSeerBtn').disabled = true
-      document.getElementById('seerStatus').textContent = 'Investigating…'
-      await getSupabase().from('night_actions').upsert({
+    // ── DAY ──
+    function showDayDiscussion() {
+      document.getElementById('nightScreen').classList.add('hidden');
+      document.getElementById('resultScreen').classList.add('hidden');
+      document.getElementById('dayScreen').classList.remove('hidden');
+      document.getElementById('discussionPhase').classList.remove('hidden');
+      document.getElementById('votePhase').classList.add('hidden');
+
+      api('/api/rooms/' + roomCode).then(function(room) {
+        if (!room) return;
+        var killed = room.last_killed || '';
+        document.getElementById('nightResult').textContent = killed ? '☠️ ' + killed + ' was attacked last night!' : '🌅 The night passed peacefully.';
+      }).catch(function() {});
+    }
+
+    function showVotePhase() {
+      document.getElementById('dayScreen').classList.remove('hidden');
+      document.getElementById('discussionPhase').classList.add('hidden');
+      document.getElementById('votePhase').classList.remove('hidden');
+      document.getElementById('votedConfirmed').classList.add('hidden');
+      document.getElementById('voteConfirmBtn').classList.add('hidden');
+      selectedTarget = null;
+
+      var list = document.getElementById('voteList');
+      list.innerHTML = '<p style="color:var(--text-secondary);">Loading players...</p>';
+
+      api('/api/players?room_code=' + roomCode).then(function(players) {
+        if (!players) return;
+        var alive = players.filter(function(p) { return p.alive && p.id !== playerId; });
+        list.innerHTML = alive.map(function(p) {
+          return '<div class="vote-target" data-id="' + p.id + '" onclick="selectVoteTarget(this, \'' + p.id + '\')">' + esc(p.name) + '</div>';
+        }).join('');
+      }).catch(function() {});
+    }
+
+    function selectVoteTarget(el, targetId) {
+      document.querySelectorAll('.vote-target').forEach(function(e) { e.classList.remove('selected'); });
+      el.classList.add('selected');
+      selectedTarget = targetId;
+      document.getElementById('voteConfirmBtn').classList.remove('hidden');
+    }
+
+    function confirmVote() {
+      if (!selectedTarget) return;
+      api('/api/day-votes', 'POST', {
         room_code: roomCode,
-        round: parseInt(document.getElementById('nightRound').textContent),
-        player_id: playerId,
-        target_id: selectedTarget,
-        action_type: 'investigate'
-      }, { onConflict: 'room_code,round,player_id' })
-      showNightConfirmed()
-    }
-
-    async function submitDoctorAction() {
-      if (!selectedTarget) return
-      document.getElementById('submitDoctorBtn').disabled = true
-      document.getElementById('doctorStatus').textContent = 'Protected! 💉'
-      await getSupabase().from('night_actions').upsert({
-        room_code: roomCode,
-        round: parseInt(document.getElementById('nightRound').textContent),
-        player_id: playerId,
-        target_id: selectedTarget,
-        action_type: 'protect'
-      }, { onConflict: 'room_code,round,player_id' })
-      showNightConfirmed()
-    }
-
-    // ==========================================
-    // DAY DISCUSSION
-    // ==========================================
-    function showDayDiscussion(round) {
-      document.getElementById('dayDiscussionScreen').classList.remove('hidden')
-      document.getElementById('dayRound').textContent = round
-      document.getElementById('dayNightResult').textContent = '☀️ It\'s daytime! Discuss who you suspect...'
-
-      // Show seer result if available
-      const parent = document.getElementById('dayNightResult').parentElement
-      const existing = parent.querySelector('.seer-result')
-      if (existing) existing.remove()
-
-      if (seerResult !== null) {
-        const div = document.createElement('div')
-        div.className = `seer-result ${seerResult ? 'guilty' : 'innocent'}`
-        div.textContent = seerResult ? '🐺 They are a WEREWOLF!' : '✅ Innocent'
-        parent.appendChild(div)
-      }
-    }
-
-    // ==========================================
-    // VOTING
-    // ==========================================
-    async function showVoting(round) {
-      document.getElementById('voteScreen').classList.remove('hidden')
-      document.getElementById('voteRound').textContent = round
-      selectedTarget = null
-
-      const sb = getSupabase()
-      const { data: players } = await sb
-        .from('players')
-        .select('id, name')
-        .eq('room_code', roomCode)
-        .eq('alive', true)
-        .neq('id', playerId)
-
-      const list = document.getElementById('votePlayerList')
-      if (!players || players.length === 0) {
-        list.innerHTML = '<p style="color:var(--text-secondary);text-align:center;">No one to vote for.</p>'
-        return
-      }
-
-      list.innerHTML = players.map(p =>
-        `<button class="action-btn" data-id="${p.id}" onclick="selectVote(${p.id})">${p.name}</button>`
-      ).join('')
-    }
-
-    function selectVote(id) {
-      selectedTarget = id
-      document.querySelectorAll('#votePlayerList .action-btn').forEach(b => {
-        b.classList.toggle('selected', parseInt(b.dataset.id) === id)
-      })
-      const name = document.querySelector(`.action-btn.selected`)?.textContent || 'Player'
-      document.getElementById('submitVoteBtn').disabled = false
-      document.getElementById('voteStatus').textContent = `Voting to eliminate: ${name}`
-    }
-
-    async function submitVote() {
-      if (!selectedTarget) return
-      document.getElementById('submitVoteBtn').disabled = true
-      document.getElementById('voteStatus').textContent = 'Vote submitted ✓'
-      await getSupabase().from('day_votes').upsert({
-        room_code: roomCode,
-        round: parseInt(document.getElementById('voteRound').textContent),
         voter_id: playerId,
         target_id: selectedTarget
-      }, { onConflict: 'room_code,round,voter_id' })
+      }).then(function(data) {
+        if (data && data.success) {
+          document.getElementById('voteConfirmBtn').classList.add('hidden');
+          document.getElementById('votedConfirmed').classList.remove('hidden');
+          document.querySelectorAll('.vote-target').forEach(function(e) { e.classList.add('voted'); e.onclick = null; });
+        }
+      }).catch(function() {});
     }
 
-    // ==========================================
-    // BROADCAST HANDLERS
-    // ==========================================
-    function handleNightResultBroadcast(payload) {
-      // Seer gets personal result
-      if (myRole === ROLES.SEER && payload.seerResults) {
-        const myResult = payload.seerResults.find(r => r.seer_player_id === playerId)
-        if (myResult) seerResult = myResult.is_werewolf
-      }
-
-      // If player was killed
-      if (payload.killedPlayer && payload.killedPlayer.id === playerId) {
-        isAlive = false
-        showEliminated()
-      }
+    // ── ELIMINATED ──
+    function showEliminated() {
+      document.getElementById('nightScreen').classList.add('hidden');
+      document.getElementById('dayScreen').classList.add('hidden');
+      document.getElementById('resultScreen').classList.remove('hidden');
+      document.getElementById('eliminatedReveal').innerHTML = '<div class="big">💀</div><h2>You have been eliminated</h2><p style="color:var(--text-secondary);margin-top:8px;">You can still watch the game unfold.</p>';
     }
 
-    function handleDayResultBroadcast(payload) {
-      hideAllScreens()
-      if (!isAlive) { showEliminated(); return }
-
-      document.getElementById('dayResultsScreen').classList.remove('hidden')
-      const content = document.getElementById('dayResultContent')
-      const eliminated = payload.eliminatedPlayer
-      const ackBtn = document.getElementById('ackDayResultBtn')
-
-      if (eliminated && eliminated.id === playerId) {
-        isAlive = false
-        content.innerHTML = `<div class="elimination-flash" style="font-size:2rem;margin:20px 0;">⚖️ You were eliminated!</div>`
-        ackBtn.textContent = '👻 Watch the game'
-        ackBtn.onclick = () => { hideAllScreens(); showEliminated() }
-        return
-      }
-
-      if (eliminated) {
-        const roleName = eliminated.role.charAt(0).toUpperCase() + eliminated.role.slice(1)
-        const roleConfig = ROLE_CONFIG[eliminated.role]
-        content.innerHTML = `<div class="elimination-flash" style="font-size:1.5rem;margin:20px 0;">
-          ⚖️ <strong>${eliminated.name}</strong> was eliminated!<br>
-          <span style="font-size:1.8rem;">${roleConfig?.emoji || '❓'} ${roleName}</span>
-        </div>`
-      } else {
-        content.innerHTML = `<div style="font-size:1.3rem;margin:20px 0;color:var(--accent-gold);">
-          ⚖️ No one was eliminated (tie).
-        </div>`
-      }
-
-      ackBtn.textContent = 'Continue'
-      ackBtn.onclick = () => {
-        document.getElementById('dayResultsScreen').classList.add('hidden')
-        document.getElementById('waitingScreen').classList.remove('hidden')
-        document.getElementById('waitingScreen').querySelector('h2').textContent = 'Waiting for next phase...'
-      }
-    }
-
-    function handleVictoryBroadcast(payload) {
-      hideAllScreens()
-      document.getElementById('victoryScreen').classList.remove('hidden')
-      document.getElementById('eliminatedOverlay')?.classList.add('hidden')
-
-      const emoji = document.getElementById('playerVictoryEmoji')
-      const title = document.getElementById('playerVictoryTitle')
-      const sub = document.getElementById('playerVictorySub')
-
-      if (payload.winner === 'werewolf') {
-        emoji.textContent = '🐺'
-        title.textContent = 'Werewolves Win!'
-        title.style.color = 'var(--accent-werewolf)'
-        sub.textContent = (myRole && ROLE_CONFIG[myRole]?.team === 'werewolf') ? 'You win! 🐺' : 'The werewolves took over…'
-      } else {
-        emoji.textContent = '🏘️'
-        title.textContent = 'Village Wins!'
-        title.style.color = 'var(--accent-villager)'
-        sub.textContent = (!myRole || ROLE_CONFIG[myRole]?.team === 'village') ? 'You win! 🎉' : 'The villagers prevailed…'
-      }
+    // ── VICTORY ──
+    function showVictory(winner) {
+      if (pollInterval) clearInterval(pollInterval);
+      document.querySelectorAll('.player-view > div').forEach(function(d) { d.classList.add('hidden'); });
+      document.getElementById('victoryScreen').classList.remove('hidden');
+      document.getElementById('playerVictoryEmoji').textContent = winner === 'werewolf' ? '🐺' : '🏘️';
+      document.getElementById('playerVictoryTitle').textContent = winner === 'werewolf' ? 'Werewolves Win!' : 'Village Wins!';
     }
   </script>
 </body>
