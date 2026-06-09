@@ -309,8 +309,8 @@
         villager: 'Find and vote out the werewolves during the day.',
         seer: 'Investigate one player each night to learn if they are Good or Bad.',
         doctor: 'Protect one player each night from the werewolves. Cannot self-protect or save the same person twice in a row.',
-        wolf_king: 'Kill with the werewolves at night. Secretly mark one player - when you die, they die too.',
-        shooter: 'You have no night action. If you are eliminated, you take one revenge shot at any player.'
+        wolf_king: 'Kill with the werewolves at night. Secretly mark one player each night — when you die, they die too.',
+        shooter: 'Each night, secretly store one player as your target. If you die, your stored target is eliminated.'
       };
 
       document.getElementById('roleEmoji').textContent = emojis[role] || '❓';
@@ -338,8 +338,7 @@
         wolf_king: { emoji: '👑', title: '🌙 Night ' + round + ' — Kill & Mark', desc: 'Select a victim AND a mark target', actions: ['kill', 'mark'] },
         seer: { emoji: '🔮', title: '🌙 Night ' + round + ' — Investigate', desc: 'Select a player to investigate (Good or Bad)', actions: ['investigate'] },
         doctor: { emoji: '💉', title: '🌙 Night ' + round + ' — Protect', desc: 'Select a player to save (not yourself, not same as last night)', actions: ['protect'] },
-        shooter: { emoji: '🔫', title: 'Night ' + round, desc: 'You have no night action. Wait for your moment.', actions: [] },
-
+        shooter: { emoji: '🔫', title: '🌙 Night ' + round + ' — Store Your Target', desc: 'Choose a player to target. If you die, they die too. You can change this each night.', actions: ['store_target'] },
         villager: { emoji: '🌙', title: 'Night ' + round, desc: 'Night falls, close your eyes...', actions: [] }
       };
 
@@ -387,17 +386,48 @@
         var list = document.getElementById('nightTargetList');
         if (!list) return;
 
+        // Shooter: store target list with "No Target" option
+        if (playerRole === 'shooter') {
+          // Fetch current stored target
+          api('/api/my-stored-target?room_code=' + roomCode + '&player_id=' + playerId).then(function(stored) {
+            if (!stored) return;
+            var currentTargetHtml = '';
+            if (stored.storedTargetId !== null && stored.storedTargetName) {
+              currentTargetHtml = '<p style="color:var(--accent-gold);font-size:0.9rem;margin-bottom:8px;">🔫 Current target: <strong>' + esc(stored.storedTargetName) + '</strong></p>';
+            } else if (stored.storedTargetId === null && nightActionSubmitted) {
+              currentTargetHtml = '<p style="color:var(--text-secondary);font-size:0.9rem;margin-bottom:8px;">🔫 No target stored</p>';
+            }
+            list.innerHTML =
+              currentTargetHtml +
+              '<p style="color:var(--text-secondary);font-size:0.9rem;margin-bottom:8px;">🎯 Select your stored target</p>' +
+              alive.map(function(p) {
+                return '<div class="action-target" data-id="' + p.id + '" onclick="selectNightTarget(this, ' + p.id + ')">' + esc(p.name) + ' <span class="selected-indicator hidden">✓</span></div>';
+              }).join('') +
+              '<div class="action-target" data-id="no_target" onclick="selectNoTarget(this)" style="border-color:var(--accent-werewolf);margin-top:4px;">❌ No Target <span id="noTargetIndicator" class="hidden" style="color:var(--accent-werewolf);margin-left:8px;">✓</span></div>';
+          }).catch(function() {});
+        }
         // Wolf King sees two sections
-        if (playerRole === 'wolf_king') {
-          list.innerHTML =
-            '<p style="color:var(--text-secondary);font-size:0.9rem;margin-bottom:8px;">🎯 Choose your kill target</p>' +
-            alive.map(function(p) {
-              return '<div class="action-target" data-id="' + p.id + '" onclick="selectNightTarget(this, ' + p.id + ')">' + esc(p.name) + ' <span class="selected-indicator hidden">✓</span></div>';
-            }).join('') +
-            '<p style="color:var(--text-secondary);font-size:0.9rem;margin:12px 0 8px 0;">👑 Mark a secret target (dies when you die)</p>' +
-            alive.map(function(p) {
-              return '<div class="action-target mark-target" data-id="' + p.id + '" onclick="selectMarkTarget(this, ' + p.id + ')">📌 ' + esc(p.name) + ' <span class="mark-indicator hidden">👑</span></div>';
-            }).join('');
+        else if (playerRole === 'wolf_king') {
+          // Fetch current stored mark
+          api('/api/my-stored-target?room_code=' + roomCode + '&player_id=' + playerId).then(function(stored) {
+            if (!stored) return;
+            var markStatusHtml = '';
+            if (stored.storedTargetId !== null && stored.storedTargetName) {
+              markStatusHtml = '<p style="color:purple;font-size:0.9rem;margin-bottom:8px;">👑 Current mark: <strong>' + esc(stored.storedTargetName) + '</strong></p>';
+            }
+            var killSection =
+              '<p style="color:var(--text-secondary);font-size:0.9rem;margin-bottom:8px;">🎯 Choose your kill target</p>' +
+              alive.map(function(p) {
+                return '<div class="action-target" data-id="' + p.id + '" onclick="selectNightTarget(this, ' + p.id + ')">' + esc(p.name) + ' <span class="selected-indicator hidden">✓</span></div>';
+              }).join('') +
+              markStatusHtml +
+              '<p style="color:var(--text-secondary);font-size:0.9rem;margin:12px 0 8px 0;">👑 Mark a secret target (dies when you die)</p>' +
+              alive.map(function(p) {
+                return '<div class="action-target mark-target" data-id="' + p.id + '" onclick="selectMarkTarget(this, ' + p.id + ')">📌 ' + esc(p.name) + ' <span class="mark-indicator hidden">👑</span></div>' +
+                  '<div class="action-target mark-target" data-id="no_mark" onclick="selectClearMark(this)" style="border-color:#666;margin-top:4px;">❌ Clear Mark <span id="clearMarkIndicator" class="hidden" style="color:#999;margin-left:8px;">✓</span></div>';
+              }).join('');
+            list.innerHTML = killSection;
+          }).catch(function() {});
         } else {
           list.innerHTML = alive.map(function(p) {
             return '<div class="action-target" data-id="' + p.id + '" onclick="selectNightTarget(this, ' + p.id + ')">' + esc(p.name) + ' <span class="selected-indicator hidden">✓</span></div>';
@@ -427,28 +457,71 @@
       document.getElementById('nightConfirmBtn').classList.remove('hidden');
     }
 
+    function selectNoTarget(el) {
+      document.querySelectorAll('.action-target .selected-indicator').forEach(function(e) { e.classList.add('hidden'); });
+      document.querySelectorAll('.action-target').forEach(function(e) { e.classList.remove('selected'); });
+      document.querySelectorAll('#noTargetIndicator').forEach(function(e) { e.classList.add('hidden'); });
+      // Clear kill target selection if any
+      selectedTarget = null;
+      el.classList.add('selected');
+      var ind = el.querySelector('#noTargetIndicator') || document.getElementById('noTargetIndicator');
+      if (ind) ind.classList.remove('hidden');
+      selectedTarget = 'no_target';
+      document.getElementById('nightConfirmBtn').classList.remove('hidden');
+    }
+
+    function selectClearMark(el) {
+      document.querySelectorAll('.mark-target .mark-indicator').forEach(function(e) { e.classList.add('hidden'); });
+      document.querySelectorAll('.mark-target').forEach(function(e) { e.classList.remove('selected'); });
+      selectedMarkTarget = 'no_mark';
+      el.classList.add('selected');
+      document.getElementById('nightConfirmBtn').classList.remove('hidden');
+    }
+
     function confirmNightAction() {
-      if (!selectedTarget) return;
+      if (!selectedTarget && playerRole !== 'wolf_king') return;
 
-      var actionMap = { werewolf: 'kill', wolf_king: 'kill', seer: 'investigate', doctor: 'protect' };
-      var actionType = actionMap[playerRole];
+      // Shooter: store target via /api/store-target
+      if (playerRole === 'shooter') {
+        if (!selectedTarget) return;
+        var targetId = selectedTarget === 'no_target' ? 'no_target' : selectedTarget;
+        api('/api/store-target', 'POST', {
+          room_code: roomCode, player_id: playerId, target_id: targetId
+        }).then(function(data) {
+          if (data && data.success) {
+            nightActionSubmitted = true;
+            document.getElementById('nightConfirmBtn').classList.add('hidden');
+            document.getElementById('nightConfirmed').classList.remove('hidden');
+            var label = targetId === 'no_target' ? 'No Target' : 'a player';
+            document.getElementById('nightConfirmed').innerHTML = '✅ Target stored — ' + label + '<br><span style="color:var(--text-secondary);font-size:0.9rem;">Waiting for host to end night...</span>';
+            var targets = document.querySelectorAll('.action-target');
+            for (var i = 0; i < targets.length; i++) { targets[i].style.opacity = '0.5'; targets[i].style.cursor = 'default'; targets[i].onclick = null; }
+          }
+        }).catch(function(err) { alert('Error: ' + err.message); });
+        return;
+      }
 
-      // Wolf King: send kill + mark
+      // Wolf King: send kill + store mark
       if (playerRole === 'wolf_king') {
         if (!selectedTarget) return;
         api('/api/night-actions', 'POST', {
           room_code: roomCode, player_id: playerId, target_id: selectedTarget, action_type: 'kill'
-        }).then(function(data) {
-          if (data && data.success) { /* kill sent */ }
         }).catch(function() {});
-        if (selectedMarkTarget) {
-          api('/api/night-actions', 'POST', {
-            room_code: roomCode, player_id: playerId, target_id: selectedMarkTarget, action_type: 'mark'
-          }).then(function(data) {
-            if (data && data.success) { /* mark sent */ }
+        // Store mark target
+        if (selectedMarkTarget !== null && selectedMarkTarget !== undefined) {
+          var markId = selectedMarkTarget === 'no_mark' ? 'no_target' : selectedMarkTarget;
+          api('/api/store-target', 'POST', {
+            room_code: roomCode, player_id: playerId, target_id: markId
           }).catch(function() {});
         }
+        finishNightAction();
+        return;
       }
+
+      // All other roles
+      var actionMap = { werewolf: 'kill', seer: 'investigate', doctor: 'protect' };
+      var actionType = actionMap[playerRole];
+      if (!actionType) return;
 
       api('/api/night-actions', 'POST', {
         room_code: roomCode,
@@ -486,6 +559,15 @@
       }).catch(function(err) {
         alert('Error: ' + err.message);
       });
+    }
+
+    function finishNightAction() {
+      nightActionSubmitted = true;
+      document.getElementById('nightConfirmBtn').classList.add('hidden');
+      document.getElementById('nightConfirmed').classList.remove('hidden');
+      document.getElementById('nightConfirmed').innerHTML = '✅ Actions submitted<br><span style="color:var(--text-secondary);font-size:0.9rem;">Waiting for host to end night...</span>';
+      var targets = document.querySelectorAll('.action-target');
+      for (var i = 0; i < targets.length; i++) { targets[i].style.opacity = '0.5'; targets[i].style.cursor = 'default'; targets[i].onclick = null; }
     }
 
     // ── DAY ──
