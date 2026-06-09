@@ -592,8 +592,9 @@ function cleanup() {
   pollTimer = null; onlineTimer = null;
 }
 
-// ===== CLEANUP =====
+// ===== CLEANUP & INIT =====
 window.addEventListener('beforeunload', cleanup);
+refreshTranslations();
 </script>
 </body>
 </html>
