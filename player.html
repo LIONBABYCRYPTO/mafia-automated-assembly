@@ -215,9 +215,9 @@
 
     function fetchRole() {
       if (!playerId) return;
-      api('/api/player-roles?player_id=' + playerId).then(function(roles) {
-        if (roles && roles.length > 0) {
-          playerRole = roles[0].role;
+      api('/api/player-roles?room_code=' + roomCode + '&player_id=' + playerId).then(function(data) {
+        if (data && data.role) {
+          playerRole = data.role;
           document.getElementById('waitingScreen').classList.add('hidden');
           showRoleReveal(playerRole);
         }

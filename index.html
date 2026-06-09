@@ -136,7 +136,7 @@
         hostToken = saved.hostToken;
         roomId = saved.roomId;
         api('/api/rooms/' + roomCode).then(function(data) {
-          if (data && data.room_code) {
+          if (data && (data.roomCode || data.room_code)) {
             if (data.phase === 'lobby' || !data.phase) {
               showLobby();
               generateQR();
