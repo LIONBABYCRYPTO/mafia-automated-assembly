@@ -196,10 +196,10 @@
       var btn = document.getElementById('joinBtn');
       btn.disabled = true; btn.textContent = 'Joining...';
 
-      api('/api/players', 'POST', { room_code: roomCode, name: name }).then(function(data) {
-        if (data && data.id) {
-          playerId = data.id;
-          playerToken = data.player_token;
+      api('/api/join', 'POST', { room_code: roomCode, name: name }).then(function(data) {
+        if (data && data.player_id) {
+          playerId = data.player_id;
+          playerToken = data.user_token;
           document.getElementById('joinScreen').classList.add('hidden');
           document.getElementById('waitingScreen').classList.remove('hidden');
           startPolling();

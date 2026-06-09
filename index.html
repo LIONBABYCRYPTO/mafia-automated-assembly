@@ -295,9 +295,8 @@ async function createRoom() {
     const qrDiv = document.getElementById('qrcode');
     qrDiv.innerHTML = '';
     const baseUrl = window.location.origin + window.location.pathname.replace(/\/?index\.html$/, '').replace(/\/?$/, '');
-    // Fix: if baseUrl ends with the repo path (GitHub Pages), strip it for custom domain
-    const repoPath = '/mafia-automated-assembly';
-    const playerUrl = (baseUrl.endsWith(repoPath) ? window.location.origin : baseUrl) + '/player.html?room=' + roomCode;
+    // Handle both custom domain (imp.cx serves at root) and GitHub Pages (serves at subpath)
+    const playerUrl = baseUrl + '/player.html?room=' + roomCode;
     if (typeof QRCode !== 'undefined') {
       new QRCode(qrDiv, { text: playerUrl, width: 180, height: 180 });
     } else {
