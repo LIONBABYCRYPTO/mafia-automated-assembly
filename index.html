@@ -293,7 +293,8 @@ async function createRoom() {
     // Generate QR
     const qrDiv = document.getElementById('qrcode');
     qrDiv.innerHTML = '';
-    const playerUrl = window.location.origin + '/player.html?room=' + roomCode;
+    const baseUrl = window.location.origin + window.location.pathname.replace(/\/?index\.html$/, '');
+    const playerUrl = baseUrl + '/player.html?room=' + roomCode;
     if (typeof QRCode !== 'undefined') {
       new QRCode(qrDiv, { text: playerUrl, width: 180, height: 180 });
     } else {
