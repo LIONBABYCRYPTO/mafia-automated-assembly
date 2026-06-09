@@ -172,6 +172,11 @@
       api('/api/rooms/' + roomCode).then(function(room) {
         if (!room || !room.phase) return;
 
+        // Update waiting count while in lobby
+        if (room.phase === 'lobby') {
+          document.getElementById('waitingCount').textContent = room.playerCount || 0;
+        }
+
         if (room.phase === 'victory') {
           showVictory(room.winner);
           return;
