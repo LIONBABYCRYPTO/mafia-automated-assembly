@@ -289,7 +289,8 @@
       if (!roomCode) { alert('No room code'); return; }
       document.getElementById('lobbyView').classList.add('hidden');
       showToast('🚀 Assigning roles...');
-      api('/api/assign-roles', 'POST', { room_code: roomCode }).then(function(data) {
+      var wc = parseInt(document.getElementById('wolfCount').value) || 0;
+      api('/api/assign-roles', 'POST', { room_code: roomCode, wolf_count: wc || undefined }).then(function(data) {
         if (data && data.success) {
           currentPhase = 'night';
           currentRound = 1;
@@ -344,7 +345,7 @@
     function handlePhaseTimeout() {
       if (currentPhase === 'night') processNight();
       else if (currentPhase === 'day_discussion') startVotePhase();
-      else if (currentPhase === 'day_vote') processDay();
+      else if (currentPhase === 'day_voting') processDay();
     }
 
     function processNight() {
@@ -381,7 +382,7 @@
     function startVotePhase() {
       clearInterval(phaseTimer);
       document.getElementById('timerDisplay').textContent = '--';
-      currentPhase = 'day_vote';
+      currentPhase = 'day_voting';
       document.getElementById('phaseBanner').className = 'phase-banner phase-vote';
       document.getElementById('phaseBanner').textContent = '🗳️ Vote — Round ' + currentRound;
       document.getElementById('hostControls').style.display = 'block';
@@ -560,7 +561,6 @@
           document.getElementById('phaseBanner').textContent = '☀️ Day ' + currentRound;
           break;
         case 'day_voting':
-        case 'day_vote':
           document.getElementById('gameContent').innerHTML = '<p style="color:var(--text-secondary);text-align:center;">🗳️ Voting in progress...</p>';
           document.getElementById('hostControls').style.display = 'block';
           document.getElementById('hostControls').querySelector('#phaseActionBtn').textContent = '📊 End Vote & Tally';

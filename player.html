@@ -152,8 +152,6 @@
       return fetch(API_URL + path, opts).then(function(r) { return r.json(); });
     }
 
-    function esc(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
-
     // ── Sound effects ──
     var audioCtx = null;
     function initAudio() { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
@@ -261,6 +259,7 @@
             case 'day_discussion': showDayDiscussion(); break;
             case 'day_voting':
             case 'day_vote': showVotePhase(); break;
+            case 'day_results': showDayResults(); break;
           }
           currentRound = room.round || 1;
         }
@@ -517,6 +516,34 @@
       document.getElementById('finalWordsForm').classList.remove('hidden');
     }
 
+    // ── DAY RESULTS ──
+    function showDayResults() {
+      document.getElementById('nightScreen').classList.add('hidden');
+      document.getElementById('dayScreen').classList.add('hidden');
+      document.getElementById('resultScreen').classList.remove('hidden');
+      api('/api/players?room_code=' + roomCode).then(function(players) {
+        if (!players) return;
+        var me = players.find(function(p) { return p.id === playerId; });
+        if (me && !me.alive) {
+          // Personal elimination screen
+          document.getElementById('eliminatedReveal').innerHTML = '<div class="big">💀</div><h2>You have been eliminated</h2><p style="color:var(--text-secondary);margin-top:8px;">You can still watch the game unfold.</p><p style="margin-top:8px;font-size:0.9rem;color:var(--text-secondary);">Your role was: <strong>' + (nameMap ? nameMap[playerRole] || playerRole : playerRole) + '</strong></p>';
+          playDrumroll();
+          document.getElementById('finalWordsForm').classList.remove('hidden');
+        } else {
+          api('/api/rooms/' + roomCode).then(function(room) {
+            if (!room) return;
+            var killed = room.lastKilledName;
+            if (killed) {
+              document.getElementById('eliminatedReveal').innerHTML = '<div class="big">⚖️</div><h2>' + esc(killed) + ' was eliminated!</h2>';
+              playDrumroll();
+            } else {
+              document.getElementById('eliminatedReveal').innerHTML = '<div class="big">⚖️</div><h2>No one was eliminated</h2><p style="color:var(--text-secondary);">Waiting for the next night...</p>';
+            }
+          }).catch(function() {});
+        }
+      }).catch(function() {});
+    }
+
     // ── VICTORY ──
     function showVictory(winner) {
       if (pollInterval) clearInterval(pollInterval);
@@ -529,7 +556,11 @@
     }
     // ── TIMER SYNC ──
     function updateTimer(room) {
-      var timerEl = document.getElementById('nightTimer') || document.getElementById('dayTimer');
+      var phase = room.phase || '';
+      var timerEl = null;
+      if (phase.indexOf('night') === 0) timerEl = document.getElementById('nightTimer');
+      else if (phase.indexOf('day') === 0 || phase.indexOf('vote') === 0) timerEl = document.getElementById('dayTimer');
+      else timerEl = document.getElementById('nightTimer');
       if (!timerEl) return;
       if (!room.phaseStartedAt || !room.phaseDuration || room.phaseDuration === 0) {
         timerEl.style.display = 'none';

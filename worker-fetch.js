@@ -262,6 +262,7 @@ export default {
           const ep = state.players.find(p => p.id === eliminatedId);
           if (ep) { ep.alive = false; eliminatedName = ep.name; eliminatedRole = ep.role || null; }
         }
+        state.lastKilledName = eliminatedName;
 
         const winner = checkWin(state);
         if (winner) {
