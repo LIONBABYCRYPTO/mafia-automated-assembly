@@ -413,13 +413,17 @@
 
           // If seer: show investigation result immediately
           if (data.investigation) {
-            var resultText = data.investigation.isWerewolf ? '🐺 IS a Werewolf!' : '✅ NOT a Werewolf';
-            var resultColor = data.investigation.isWerewolf ? 'var(--accent-werewolf)' : 'var(--accent-villager)';
+            var inv = data.investigation;
+            var resultText = inv.isWerewolf ? '🐺 IS a Werewolf!' : '✅ NOT a Werewolf';
+            var resultColor = inv.isWerewolf ? 'var(--accent-werewolf)' : 'var(--accent-villager)';
             document.getElementById('nightConfirmed').innerHTML =
-              '🔮 Investigation result: <span style=\"color:' + resultColor + ';font-weight:700;font-size:1.3rem;\">' + resultText + '</span><br>' +
-              '<span style=\"color:var(--text-secondary);font-size:0.9rem;\">Waiting for host to end night...</span>';
+              '🔮 You investigated <strong>' + esc(inv.targetName || '?') + '</strong><br>' +
+              '<span style="color:' + resultColor + ';font-weight:700;font-size:1.3rem;">' + resultText + '</span><br>' +
+              '<span style="color:var(--text-secondary);font-size:0.9rem;">Waiting for host to end night...</span>';
           } else {
-            document.getElementById('nightConfirmed').textContent = '✅ Action submitted, waiting for host...';
+            var targetNameEl = document.querySelector('.action-target.selected');
+            var tName = targetNameEl ? targetNameEl.textContent.trim().replace('✓','').trim() : '';
+            document.getElementById('nightConfirmed').innerHTML = '✅ Action submitted — targeting <strong>' + esc(tName) + '</strong><br><span style="color:var(--text-secondary);font-size:0.9rem;">Waiting for host to end night...</span>';
           }
 
           var targets = document.querySelectorAll('.action-target');
