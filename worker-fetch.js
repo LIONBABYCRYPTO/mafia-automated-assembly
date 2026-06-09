@@ -456,6 +456,34 @@ async function handleRequest(request) {
         return json({ finalWords: state.finalWords }, 200, origin);
       }
 
+      // GET /api/players
+      if (path === '/api/players' && method === 'GET') {
+        const code = url.searchParams.get('room_code') || '';
+        const raw = await GAME_KV.get(`room:${code}`);
+        if (!raw) return json({ error: 'Room not found' }, 404, origin);
+        const state = JSON.parse(raw);
+        const now = Date.now();
+        return json(state.players.map(p => ({
+          id: p.id, name: p.name, alive: p.alive,
+          online: p.online && (now - (p.lastHeartbeat || 0)) < DEFAULT_HEARTBEAT_TIMEOUT,
+        })), 200, origin);
+      }
+
+      // GET /api/player-roles
+      if (path === '/api/player-roles' && method === 'GET') {
+        const code = url.searchParams.get('room_code') || '';
+        const playerId = parseInt(url.searchParams.get('player_id') || '0');
+        const auth = parseAuth(request);
+        const raw = await GAME_KV.get(`room:${code}`);
+        if (!raw) return json({ error: 'Room not found' }, 404, origin);
+        const state = JSON.parse(raw);
+        const player = state.players.find(p => p.id === playerId && p.userId === auth.token);
+        if (!player) return json({ error: 'Forbidden' }, 403, origin);
+        // Only return role if game has started
+        if (state.phase === 'lobby') return json({ role: null }, 200, origin);
+        return json({ userId: player.userId, role: player.role, name: player.name }, 200, origin);
+      }
+
       // POST /api/heartbeat
       if (path === '/api/heartbeat' && method === 'POST') {
         const body = await request.json();
