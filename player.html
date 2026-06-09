@@ -232,6 +232,8 @@
           playerRole = data.role;
           document.getElementById('waitingScreen').classList.add('hidden');
           showRoleReveal(playerRole);
+          // Reset lastPhase so the next poll triggers the night UI
+          lastPhase = null;
         }
       }).catch(function() {});
     }
