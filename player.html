@@ -268,22 +268,17 @@
       if (pollInterval) clearInterval(pollInterval);
       pollInterval = setInterval(pollGameState, 3500);
       pollGameState();
-      // Start heartbeat every 30s
-      if (!window.heartbeatInterval) {
-        window.heartbeatInterval = setInterval(sendHeartbeat, 30000);
-      }
     }
 
     function sendHeartbeat() {
-      if (!roomCode || !playerId) return;
-      api('/api/heartbeat', 'POST', { room_code: roomCode, player_id: playerId });
+      // Heartbeat is now piggybacked on snapshot poll — no separate call needed
     }
 
     var playerName = '';
     function pollGameState() {
       if (!roomCode) return;
       // Lightweight snapshot poll
-      api('/api/rooms/' + roomCode + '/snapshot').then(function(snap) {
+      api('/api/rooms/' + roomCode + '/snapshot?player_id=' + (playerId || '')).then(function(snap) {
         if (!snap || !snap.phase) return;
 
         // Update waiting count while in lobby

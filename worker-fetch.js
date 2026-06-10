@@ -58,7 +58,7 @@ async function handleRequest(request) {
       return json({ room_code: code, host_token: hostToken }, 200, origin);
     }
 
-    // GET /api/rooms/CODE/snapshot — lightweight polling
+    // GET /api/rooms/CODE/snapshot — lightweight polling (and heartbeat piggyback)
     const snapshotMatch = path.match(/^\/api\/rooms\/([A-Z0-9]+)\/snapshot$/);
     if (snapshotMatch && method === 'GET') {
       const code = snapshotMatch[1];
@@ -66,6 +66,20 @@ async function handleRequest(request) {
       if (!raw) return json({ error: 'Room not found' }, 404, origin);
       const state = JSON.parse(raw);
       const now = Date.now();
+
+      // Piggyback heartbeat: if player_id param provided, update lastHeartbeat and persist
+      const playerId = url.searchParams.get('player_id');
+      if (playerId) {
+        const player = state.players.find(p => p.id === Number(playerId));
+        if (player) {
+          player.lastHeartbeat = now;
+          player.online = true;
+          // Write back without CAS (KV get/put is eventually consistent,
+          // heartbeat is loss-tolerant — stale heartbeat is fine)
+          await GAME_KV.put(`room:${code}`, JSON.stringify(state));
+        }
+      }
+
       return json({
         phase: state.phase, round: state.round, winner: state.winner,
         playerCount: state.players.length,
