@@ -48,6 +48,9 @@
 </head>
 <body>
   <div class="player-view">
+    <!-- ERROR BANNER -->
+    <div id="playerErrorBanner" class="hidden" style="padding:10px 16px;background:#ff475722;border:1px solid #ff4757;border-radius:12px;color:#ff4757;font-size:14px;font-weight:600;margin-bottom:12px;text-align:center;animation:fadeIn .3s ease;"></div>
+
     <!-- JOIN SCREEN -->
     <div id="joinScreen" class="join-screen">
       <h1>🐺 Werewolf</h1>
@@ -75,6 +78,13 @@
 
     <!-- NIGHT ACTION SCREEN -->
     <div id="nightScreen" class="night-screen hidden">
+      <div id="playerTimerBar" class="hidden" style="margin-bottom:8px;padding:6px 10px;background:#1a1a2e;border-radius:8px;border:1px solid #2a2a4a;">
+        <div class="flex items-c justify-b gap-8" style="margin-bottom:4px;">
+          <span style="font-size:9px;color:#8888aa;font-weight:600">⏱</span>
+          <span class="timer-text" style="font-size:11px;font-weight:700;font-family:monospace">--</span>
+        </div>
+        <div class="tally-bar" style="height:4px;"><div class="timer-fill" style="width:0%;height:100%;border-radius:4px;background:#6c63ff;transition:width .3s;"></div></div>
+      </div>
       <h2 id="nightTitle">🌙 Night Falls</h2>
       <div id="nightTimer" class="timer" style="text-align:center;font-size:1.2rem;margin-bottom:8px;display:none;">--</div>
       <p style="color:var(--text-secondary);" id="nightRoleDesc">Close your eyes...</p>
@@ -191,6 +201,27 @@
       });
     }
 
+    // ── Error handling ──
+    function showPlayerError(msg) {
+      var el = document.getElementById('playerErrorBanner');
+      if (!el) return;
+      el.textContent = msg;
+      el.classList.remove('hidden');
+      setTimeout(function() { el.classList.add('hidden'); }, 5000);
+    }
+
+    function handleApiError(err, ctx) {
+      console.error(ctx + ':', err);
+      if (err && err.message && err.message.indexOf('Failed to fetch') >= 0) {
+        showPlayerError('⚠️ Connection lost. Check your internet.');
+      }
+    }
+
+    // API health check on load
+    fetch(API_URL + '/api/rooms/NONEXIST').catch(function() {
+      showPlayerError('⚠️ Cannot reach game server.');
+    });
+
     document.getElementById('joinRoomCode').textContent = roomCode || '---';
     if (!roomCode) { document.getElementById('joinError').textContent = 'No room code in URL'; document.getElementById('joinError').classList.remove('hidden'); }
 
@@ -232,7 +263,6 @@
         btn.disabled = false; btn.textContent = 'Join Game';
       });
     }
-
     // ── POLLING ──
     function startPolling() {
       if (pollInterval) clearInterval(pollInterval);
@@ -308,7 +338,24 @@
         // Update timer every poll
         if (playerRole) {
           api('/api/rooms/' + roomCode).then(function(room) {
-            if (room && room.phase) updateTimer(room);
+            if (room && room.phase) {
+              updateTimer(room);
+              // Update player timer bar
+              var bar = document.getElementById('playerTimerBar');
+              if (bar && room.phaseDuration && room.phaseDuration > 0) {
+                bar.classList.remove('hidden');
+                var elapsed = (Date.now() - (room.phaseStartedAt || Date.now())) / 1000;
+                var remaining = Math.max(0, room.phaseDuration - elapsed);
+                var pct = Math.min(100, (elapsed / room.phaseDuration) * 100);
+                bar.querySelector('.timer-fill').style.width = pct + '%';
+                var mins = Math.floor(remaining / 60);
+                var secs = Math.floor(remaining % 60);
+                bar.querySelector('.timer-text').textContent = mins > 0 ? mins + 'm ' + secs + 's' : secs + 's';
+                if (remaining <= 10) bar.querySelector('.timer-fill').style.background = '#ff4757';
+              } else if (bar) {
+                bar.classList.add('hidden');
+              }
+            }
           });
         }
 
@@ -518,9 +565,12 @@
     function confirmNightAction() {
       if (!selectedTarget && playerRole !== 'wolf_king') return;
 
+      var btn = document.getElementById('nightConfirmBtn');
+      if (btn) { btn.disabled = true; btn.textContent = '⏳ Sending...'; }
+
       // Shooter: store target via /api/store-target
       if (playerRole === 'shooter') {
-        if (!selectedTarget) return;
+        if (!selectedTarget) { if(btn){btn.disabled=false;btn.innerHTML='✅ Confirm Action';} return; }
         var targetId = selectedTarget === 'no_target' ? 'no_target' : selectedTarget;
         api('/api/store-target', 'POST', {
           room_code: roomCode, player_id: playerId, target_id: targetId
@@ -533,8 +583,8 @@
             document.getElementById('nightConfirmed').innerHTML = '✅ Target stored — ' + label + '<br><span style="color:var(--text-secondary);font-size:0.9rem;">Waiting for host to end night...</span>';
             var targets = document.querySelectorAll('.action-target');
             for (var i = 0; i < targets.length; i++) { targets[i].style.opacity = '0.5'; targets[i].style.cursor = 'default'; targets[i].onclick = null; }
-          }
-        }).catch(function(err) { alert('Error: ' + err.message); });
+          } else { if(btn){btn.disabled=false;btn.innerHTML='✅ Confirm Action';} }
+        }).catch(function(err) { if(btn){btn.disabled=false;btn.innerHTML='✅ Confirm Action';} alert('Error: ' + err.message); });
         return;
       }
 
@@ -592,8 +642,9 @@
             targets[i].style.cursor = 'default';
             targets[i].onclick = null;
           }
-        }
+        } else if (btn) { btn.disabled = false; btn.innerHTML = '✅ Confirm Action'; }
       }).catch(function(err) {
+        if (btn) { btn.disabled = false; btn.innerHTML = '✅ Confirm Action'; }
         alert('Error: ' + err.message);
       });
     }
@@ -665,6 +716,8 @@
 
     function confirmVote() {
       if (!selectedTarget) return;
+      var btn = document.getElementById('voteConfirmBtn');
+      if (btn) { btn.disabled = true; btn.textContent = '⏳ Sending...'; }
       api('/api/day-votes', 'POST', {
         room_code: roomCode,
         voter_id: playerId,
@@ -676,8 +729,8 @@
           document.getElementById('votedConfirmed').classList.remove('hidden');
           var targets = document.querySelectorAll('.vote-target');
           for (var i = 0; i < targets.length; i++) { targets[i].classList.add('voted'); targets[i].onclick = null; }
-        }
-      }).catch(function() {});
+        } else if (btn) { btn.disabled = false; btn.innerHTML = '✅ Confirm Vote'; }
+      }).catch(function() { if(btn) { btn.disabled = false; btn.innerHTML = '✅ Confirm Vote'; } });
     }
 
     // ── ELIMINATED ──

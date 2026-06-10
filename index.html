@@ -217,6 +217,16 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 
   <!-- ===== GAME SCREEN ===== -->
   <div id="screen-game" class="screen">
+    <div id="errorBanner" class="hidden" style="padding:10px 16px;background:#ff475722;border:1px solid #ff4757;border-radius:12px;color:#ff4757;font-size:14px;font-weight:600;margin-bottom:12px;text-align:center;animation:fadeIn .3s ease;"></div>
+
+    <div id="timerBar" class="hidden" style="margin-bottom:12px;padding:8px 12px;background:#1a1a2e;border-radius:10px;border:1px solid #2a2a4a;">
+      <div class="flex items-c justify-b gap-8" style="margin-bottom:4px;">
+        <span style="font-size:12px;color:#8888aa;font-weight:600">⏱ Phase Timer</span>
+        <span class="timer-text" style="font-size:14px;font-weight:700;font-family:monospace">--</span>
+      </div>
+      <div class="tally-bar" style="height:6px;"><div class="timer-fill tally-fill" style="width:0%;background:#6c63ff"></div></div>
+    </div>
+
     <div id="phaseBanner" class="phase-banner phase-night">🌙 <span data-i18n="night"></span></div>
 
     <div class="stats-row">
@@ -429,8 +439,19 @@ async function pollState() {
       renderPlayerList('gamePlayerList', data.players, data.phase);
       updateGameMessage(data);
 
+      // Update timer bar
+      updateTimerBar(data.phase, data.phaseStartedAt, data.phaseDuration);
+
       if (data.phase === 'victory') showVictoryScreen(data);
       updateGameControls(data.phase);
+
+      // Show tie notification
+      if (data.lastKilledName === null && data.phase === 'day_results') {
+        const msg = document.getElementById('gameMessage');
+        msg.classList.remove('hidden');
+        msg.innerHTML = '🤝 ' + t('tie-vote');
+        msg.className = 'card text-c fade-in';
+      }
     }
 
     // Vote tally updates every poll during voting (snapshot has vote count)
@@ -568,21 +589,41 @@ function updateGameControls(phase) {
 
 // ===== ACTIONS =====
 async function processNight() {
-  await fetch(API_URL + '/api/process-night', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({room_code:roomCode})});
+  const restore = showLoading(document.querySelector('[onclick="processNight()"]'));
+  try {
+    await fetch(API_URL + '/api/process-night', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({room_code:roomCode})});
+  } catch(e) { handleApiError(e, 'process-night'); }
+  if (restore) restore();
 }
 async function continueToNight() {
-  await fetch(API_URL + '/api/continue-to-night', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({room_code:roomCode})});
+  const restore = showLoading(document.querySelector('[onclick="continueToNight()"]'));
+  try {
+    await fetch(API_URL + '/api/continue-to-night', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({room_code:roomCode})});
+  } catch(e) { handleApiError(e, 'continue'); }
+  if (restore) restore();
 }
 async function startVoting() {
-  await fetch(API_URL + '/api/update-phase', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({room_code:roomCode,phase:'day_voting',duration:60})});
+  const restore = showLoading(document.querySelector('[onclick="startVoting()"]'));
+  try {
+    await fetch(API_URL + '/api/update-phase', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({room_code:roomCode,phase:'day_voting',duration:60})});
+  } catch(e) { handleApiError(e, 'start-vote'); }
+  if (restore) restore();
 }
 async function processDay() {
-  await fetch(API_URL + '/api/process-day', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({room_code:roomCode})});
+  const restore = showLoading(document.querySelector('[onclick="processDay()"]'));
+  try {
+    await fetch(API_URL + '/api/process-day', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({room_code:roomCode})});
+  } catch(e) { handleApiError(e, 'process-day'); }
+  if (restore) restore();
 }
 async function startGame() {
-  const wc = parseInt(document.getElementById('wolfCountSlider').value);
-  await fetch(API_URL + '/api/assign-roles', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({room_code:roomCode,wolf_count:wc})});
-  document.getElementById('endBtn').classList.remove('hidden');
+  const restore = showLoading(document.getElementById('startBtn'));
+  try {
+    const wc = parseInt(document.getElementById('wolfCountSlider').value);
+    await fetch(API_URL + '/api/assign-roles', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({room_code:roomCode,wolf_count:wc})});
+    document.getElementById('endBtn').classList.remove('hidden');
+  } catch(e) { handleApiError(e, 'start-game'); }
+  if (restore) restore();
 }
 async function endGame() {
   if (confirm(t('end-game') + '?')) {
@@ -595,7 +636,9 @@ async function newGame() {
   showScreen('screen-landing');
 }
 async function kickPlayer(id) {
-  await fetch(API_URL + '/api/players', {method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({room_code:roomCode,player_id:id,host_token:hostToken})});
+  try {
+    await fetch(API_URL + '/api/players', {method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({room_code:roomCode,player_id:id,host_token:hostToken})});
+  } catch(e) { handleApiError(e, 'kick'); }
 }
 
 // ===== VICTORY =====
@@ -624,9 +667,52 @@ function updateRoleDistribution(roles) {
     ).join('');
 }
 
+// ===== PHASE 5: UX POLISH — Timer, vote display, tie detection, dead player view =====
+function updateTimerBar(phase, startedAt, duration) {
+  const bar = document.getElementById('timerBar');
+  if (!bar) return;
+  if (!duration || duration <= 0) { bar.classList.add('hidden'); return; }
+  bar.classList.remove('hidden');
+  const elapsed = (Date.now() - (startedAt || Date.now())) / 1000;
+  const remaining = Math.max(0, duration - elapsed);
+  const pct = Math.min(100, (elapsed / duration) * 100);
+  bar.querySelector('.timer-fill').style.width = pct + '%';
+  const mins = Math.floor(remaining / 60);
+  const secs = Math.floor(remaining % 60);
+  bar.querySelector('.timer-text').textContent = mins > 0 ? mins + 'm ' + secs + 's' : secs + 's';
+  if (remaining <= 10) bar.querySelector('.timer-fill').style.background = '#ff4757';
+}
+
+// ===== PHASE 6: PRODUCTION HARDENING — Error boundaries, loading states =====
+function showError(msg) {
+  const el = document.getElementById('errorBanner');
+  if (!el) return;
+  el.textContent = msg;
+  el.classList.remove('hidden');
+  setTimeout(() => el.classList.add('hidden'), 5000);
+}
+
+function showLoading(btn) {
+  if (!btn) return;
+  const orig = btn.innerHTML;
+  btn.disabled = true;
+  btn.dataset.origText = orig;
+  btn.innerHTML = '⏳ Loading...';
+  return function restore() { btn.disabled = false; btn.innerHTML = btn.dataset.origText || orig; };
+}
+
+function handleApiError(err, context) {
+  console.error(context + ':', err);
+  if (err && err.message && err.message.includes('Failed to fetch')) {
+    showError('⚠️ Connection lost. Check your internet.');
+  }
+}
+
 // ===== UTILITY =====
 function copyRoomCode() {
   if (roomCode) navigator.clipboard.writeText(roomCode);
+  const btn = document.querySelector('[onclick="copyRoomCode()"]');
+  if (btn) { const t = btn.innerHTML; btn.innerHTML = '✅ Copied!'; setTimeout(() => btn.innerHTML = t, 1500); }
 }
 function cleanup() {
   roomCode = null; hostToken = null; isGameActive = false;
@@ -635,11 +721,17 @@ function cleanup() {
   if (pollTimer) clearInterval(pollTimer);
   if (onlineTimer) clearInterval(onlineTimer);
   pollTimer = null; onlineTimer = null;
+  cachedPhase = 'lobby'; cachedRound = 0; cachedAliveCount = 0;
 }
 
-// ===== CLEANUP & INIT =====
-window.addEventListener('beforeunload', cleanup);
-refreshTranslations();
+// ===== INIT =====
+window.addEventListener('DOMContentLoaded', function() {
+  refreshTranslations();
+  // Check API health
+  fetch(API_URL + '/api/rooms/NONEXIST').catch(function() {
+    showError('⚠️ Cannot reach game server. Pages may not load.');
+  });
+});
 </script>
   <div id="ad-banner" style="width:100%;max-width:728px;margin:12px auto;min-height:90px;background:linear-gradient(135deg,#1a1a2e,#16213e);border:2px dashed #6c63ff44;border-radius:12px;display:flex;align-items:center;justify-content:center;color:#6c63ff66;font-size:14px;font-weight:600;text-transform:uppercase;letter-spacing:2px">Ad Space</div>
   <footer style="text-align:center;padding:24px 0 12px;color:#666;font-size:12px">
