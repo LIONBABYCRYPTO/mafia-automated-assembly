@@ -242,11 +242,32 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 
 <script>
 // ===== STATE =====
-let roomCode = null;
-let hostToken = null;
+let roomCode = localStorage.getItem('werewolf_roomCode') || null;
+let hostToken = localStorage.getItem('werewolf_hostToken') || null;
 let pollTimer = null;
 let onlineTimer = null;
 let isGameActive = false;
+
+// Check for saved host session on load
+if (roomCode && hostToken) {
+  // Show resume option on landing
+  window.addEventListener('DOMContentLoaded', function() {
+    const createBtn = document.getElementById('createBtn');
+    if (createBtn) {
+      const resumeBtn = document.createElement('button');
+      resumeBtn.className = 'btn btn-success mt-8';
+      resumeBtn.style.marginTop = '8px';
+      resumeBtn.innerHTML = '🔄 Resume Game ' + roomCode;
+      resumeBtn.onclick = function() {
+        document.getElementById('roomCodeDisplay').textContent = roomCode;
+        showScreen('screen-lobby');
+        startOnlinePolling();
+        startPolling();
+      };
+      createBtn.parentNode.insertBefore(resumeBtn, createBtn.nextSibling);
+    }
+  });
+}
 
 // ===== SETTINGS =====
 const ADS_ENABLED = false;      // Show/hide ad banners
@@ -288,6 +309,8 @@ async function createRoom() {
     const data = await r.json();
     roomCode = data.room_code;
     hostToken = data.host_token;
+    localStorage.setItem('werewolf_roomCode', roomCode);
+    localStorage.setItem('werewolf_hostToken', hostToken);
 
     document.getElementById('roomCodeDisplay').textContent = roomCode;
 
@@ -590,6 +613,8 @@ function copyRoomCode() {
 }
 function cleanup() {
   roomCode = null; hostToken = null; isGameActive = false;
+  localStorage.removeItem('werewolf_roomCode');
+  localStorage.removeItem('werewolf_hostToken');
   if (pollTimer) clearInterval(pollTimer);
   if (onlineTimer) clearInterval(onlineTimer);
   pollTimer = null; onlineTimer = null;

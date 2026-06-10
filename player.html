@@ -136,8 +136,14 @@
     // ==========================================
     var API_URL = window.API_URL || 'http://localhost:8787';
     var roomCode = new URLSearchParams(window.location.search).get('room') || '';
-    var playerId = null;
-    var playerToken = null;
+
+    // Restore saved session
+    var savedRoom = localStorage.getItem('werewolf_playerRoom');
+    var savedId = localStorage.getItem('werewolf_playerId');
+    var savedToken = localStorage.getItem('werewolf_playerToken');
+
+    var playerId = savedRoom === roomCode && savedId ? parseInt(savedId) : null;
+    var playerToken = savedRoom === roomCode ? savedToken : null;
     var playerRole = null;
     var currentRound = 1;
     var selectedTarget = null;
@@ -188,6 +194,15 @@
     document.getElementById('joinRoomCode').textContent = roomCode || '---';
     if (!roomCode) { document.getElementById('joinError').textContent = 'No room code in URL'; document.getElementById('joinError').classList.remove('hidden'); }
 
+    // Auto-reconnect if saved session exists
+    if (playerId && playerToken && roomCode) {
+      document.getElementById('joinScreen').classList.add('hidden');
+      document.getElementById('waitingScreen').classList.remove('hidden');
+      var nameInput = document.getElementById('playerNameInput');
+      if (nameInput) nameInput.value = 'Reconnecting...';
+      startPolling();
+    }
+
     // ── JOIN ──
     function joinGame() {
       var name = document.getElementById('playerNameInput').value.trim();
@@ -200,6 +215,9 @@
         if (data && data.player_id) {
           playerId = data.player_id;
           playerToken = data.user_token;
+          localStorage.setItem('werewolf_playerRoom', roomCode);
+          localStorage.setItem('werewolf_playerId', playerId);
+          localStorage.setItem('werewolf_playerToken', playerToken);
           document.getElementById('joinScreen').classList.add('hidden');
           document.getElementById('waitingScreen').classList.remove('hidden');
           startPolling();
@@ -220,6 +238,15 @@
       if (pollInterval) clearInterval(pollInterval);
       pollInterval = setInterval(pollGameState, 2000);
       pollGameState();
+      // Start heartbeat every 30s
+      if (!window.heartbeatInterval) {
+        window.heartbeatInterval = setInterval(sendHeartbeat, 30000);
+      }
+    }
+
+    function sendHeartbeat() {
+      if (!roomCode || !playerId) return;
+      api('/api/heartbeat', 'POST', { room_code: roomCode, player_id: playerId });
     }
 
     var playerName = '';
