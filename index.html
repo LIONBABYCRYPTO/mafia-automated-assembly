@@ -210,8 +210,43 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
     </div>
 
     <div id="roleDistributionCard" class="card hidden">
-      <div style="font-weight:600;margin-bottom:8px" data-i18n="role-dist"></div>
+      <div class="flex items-c justify-b" style="margin-bottom:8px">
+        <span style="font-weight:600" data-i18n="role-dist"></span>
+        <button class="btn btn-sm btn-outline" onclick="toggleRoleGuide()" id="roleGuideBtn">📖 Role Guide</button>
+      </div>
       <div id="roleChips" class="role-preview"></div>
+      <!-- Role Guide Panel -->
+      <div id="roleGuidePanel" class="hidden" style="margin-top:12px;padding:12px;border-radius:10px;background:#0f0f1a;border:1px solid #2a2a4a;font-size:13px;line-height:1.5;animation:fadeIn .3s ease;">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+          <div style="padding:8px;border-radius:8px;background:#2ed57311;border:1px solid #2ed57333">
+            <span style="font-weight:700;color:#2ed573">🧑‍🌾 Villager</span>
+            <div style="color:#aaa;font-size:12px">Day: vote to find and eliminate werewolves.</div>
+          </div>
+          <div style="padding:8px;border-radius:8px;background:#ff475711;border:1px solid #ff475733">
+            <span style="font-weight:700;color:#ff4757">🐺 Werewolf</span>
+            <div style="color:#aaa;font-size:12px">Night: choose one victim to kill with your pack.</div>
+          </div>
+          <div style="padding:8px;border-radius:8px;background:#1e90ff11;border:1px solid #1e90ff33">
+            <span style="font-weight:700;color:#1e90ff">🔮 Seer</span>
+            <div style="color:#aaa;font-size:12px">Night: investigate one player — Good or Bad?</div>
+          </div>
+          <div style="padding:8px;border-radius:8px;background:#ffa50211;border:1px solid #ffa50233">
+            <span style="font-weight:700;color:#ffa502">💉 Doctor</span>
+            <div style="color:#aaa;font-size:12px">Night: protect one player. No self-save. No repeat.</div>
+          </div>
+          <div style="padding:8px;border-radius:8px;background:#8b000011;border:1px solid #8b000033">
+            <span style="font-weight:700;color:#cf5f5f">👑 Wolf King</span>
+            <div style="color:#aaa;font-size:12px">Night: kill + mark. When you die, your mark dies.</div>
+          </div>
+          <div style="padding:8px;border-radius:8px;background:#ff634811;border:1px solid #ff634833">
+            <span style="font-weight:700;color:#ff6348">🔫 Shooter</span>
+            <div style="color:#aaa;font-size:12px">Night: store a target. If you die, they die too.</div>
+          </div>
+        </div>
+        <div style="color:#8888aa;font-size:12px;border-top:1px solid #2a2a4a;padding-top:8px;margin-top:4px;">
+          <strong>Win conditions:</strong> Villagers win when all wolves are dead. Werewolves win when they outnumber villagers.
+        </div>
+      </div>
     </div>
   </div>
 
@@ -665,6 +700,15 @@ function updateRoleDistribution(roles) {
     .map(([role, count]) =>
       `<span class="role-chip" style="background:${getRoleColor(role)}22;color:${getRoleColor(role)}">${getRoleName(role)} x${count}</span>`
     ).join('');
+}
+
+// ===== ROLE GUIDE TOGGLE =====
+function toggleRoleGuide() {
+  const panel = document.getElementById('roleGuidePanel');
+  const btn = document.getElementById('roleGuideBtn');
+  const isOpen = !panel.classList.contains('hidden');
+  panel.classList.toggle('hidden');
+  btn.innerHTML = isOpen ? '📖 Role Guide' : '📖 Close Guide';
 }
 
 // ===== PHASE 5: UX POLISH — Timer, vote display, tie detection, dead player view =====
