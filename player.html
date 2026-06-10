@@ -562,14 +562,19 @@
 
       var btn = document.getElementById('nightConfirmBtn');
       if (btn) { btn.disabled = true; btn.textContent = '⏳ Sending...'; }
+      // Safety timeout: restore button after 10s if no response
+      var safetyTimer = setTimeout(function() {
+        if (btn) { btn.disabled = false; btn.textContent = '✅ Confirm Action'; }
+      }, 10000);
 
       // Shooter: store target via /api/store-target
       if (playerRole === 'shooter') {
-        if (!selectedTarget) { if(btn){btn.disabled=false;btn.innerHTML='✅ Confirm Action';} return; }
+        if (!selectedTarget) { clearTimeout(safetyTimer); if(btn){btn.disabled=false;btn.innerHTML='✅ Confirm Action';} return; }
         var targetId = selectedTarget === 'no_target' ? 'no_target' : selectedTarget;
         api('/api/store-target', 'POST', {
           room_code: roomCode, player_id: playerId, target_id: targetId
         }).then(function(data) {
+          clearTimeout(safetyTimer);
           if (data && data.success) {
             nightActionSubmitted = true;
             document.getElementById('nightConfirmBtn').classList.add('hidden');
@@ -579,23 +584,24 @@
             var targets = document.querySelectorAll('.action-target');
             for (var i = 0; i < targets.length; i++) { targets[i].style.opacity = '0.5'; targets[i].style.cursor = 'default'; targets[i].onclick = null; }
           } else { if(btn){btn.disabled=false;btn.innerHTML='✅ Confirm Action';} }
-        }).catch(function(err) { if(btn){btn.disabled=false;btn.innerHTML='✅ Confirm Action';} alert('Error: ' + err.message); });
+        }).catch(function(err) { clearTimeout(safetyTimer); if(btn){btn.disabled=false;btn.innerHTML='✅ Confirm Action';} alert('Error: ' + err.message); });
         return;
       }
 
       // Wolf King: send kill + store mark
       if (playerRole === 'wolf_king') {
-        if (!selectedTarget) return;
+        if (!selectedTarget) { clearTimeout(safetyTimer); return; }
         api('/api/night-actions', 'POST', {
           room_code: roomCode, player_id: playerId, target_id: selectedTarget, action_type: 'kill'
-        }).catch(function() {});
+        }).catch(function() { clearTimeout(safetyTimer); });
         // Store mark target
         if (selectedMarkTarget !== null && selectedMarkTarget !== undefined) {
           var markId = selectedMarkTarget === 'no_mark' ? 'no_target' : selectedMarkTarget;
           api('/api/store-target', 'POST', {
             room_code: roomCode, player_id: playerId, target_id: markId
-          }).catch(function() {});
+          }).catch(function() { clearTimeout(safetyTimer); });
         }
+        clearTimeout(safetyTimer);
         finishNightAction();
         return;
       }
@@ -603,7 +609,7 @@
       // All other roles
       var actionMap = { werewolf: 'kill', seer: 'investigate', doctor: 'protect' };
       var actionType = actionMap[playerRole];
-      if (!actionType) return;
+      if (!actionType) { clearTimeout(safetyTimer); return; }
 
       api('/api/night-actions', 'POST', {
         room_code: roomCode,
@@ -611,6 +617,7 @@
         target_id: selectedTarget,
         action_type: actionType
       }).then(function(data) {
+        clearTimeout(safetyTimer);
         if (data && data.success) {
           nightActionSubmitted = true;
           document.getElementById('nightConfirmBtn').classList.add('hidden');
@@ -639,6 +646,7 @@
           }
         } else if (btn) { btn.disabled = false; btn.innerHTML = '✅ Confirm Action'; }
       }).catch(function(err) {
+        clearTimeout(safetyTimer);
         if (btn) { btn.disabled = false; btn.innerHTML = '✅ Confirm Action'; }
         alert('Error: ' + err.message);
       });
@@ -713,11 +721,15 @@
       if (!selectedTarget) return;
       var btn = document.getElementById('voteConfirmBtn');
       if (btn) { btn.disabled = true; btn.textContent = '⏳ Sending...'; }
+      var voteSafety = setTimeout(function() {
+        if (btn) { btn.disabled = false; btn.textContent = '✅ Confirm Vote'; }
+      }, 10000);
       api('/api/day-votes', 'POST', {
         room_code: roomCode,
         voter_id: playerId,
         target_id: selectedTarget
       }).then(function(data) {
+        clearTimeout(voteSafety);
         if (data && data.success) {
           voteSubmitted = true;
           document.getElementById('voteConfirmBtn').classList.add('hidden');
@@ -725,7 +737,7 @@
           var targets = document.querySelectorAll('.vote-target');
           for (var i = 0; i < targets.length; i++) { targets[i].classList.add('voted'); targets[i].onclick = null; }
         } else if (btn) { btn.disabled = false; btn.innerHTML = '✅ Confirm Vote'; }
-      }).catch(function() { if(btn) { btn.disabled = false; btn.innerHTML = '✅ Confirm Vote'; } });
+      }).catch(function() { clearTimeout(voteSafety); if(btn) { btn.disabled = false; btn.innerHTML = '✅ Confirm Vote'; } });
     }
 
     // ── ELIMINATED ──

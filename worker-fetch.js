@@ -650,5 +650,5 @@ function parseAuth(req) {
 }
 
 function json(data, status = 200, origin = '*') {
-  return new Response(JSON.stringify(data), { status, headers: { ...corsHeaders(origin), 'Content-Type': 'application/json' } });
+  return new Response(JSON.stringify(data), { status, headers: { ...corsHeaders(origin), 'Content-Type': 'application/json', 'Cache-Control': 'no-cache, no-store, must-revalidate' } });
 }
