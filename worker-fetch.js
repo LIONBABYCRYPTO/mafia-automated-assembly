@@ -545,10 +545,15 @@ async function withRoom(handler, request, origin) {
   state.version = newVersion;
   try {
     await GAME_KV.put(`room:${code}`, JSON.stringify(state), {
+      version: currentVersion,
       metadata: { version: newVersion },
     });
   } catch (e) {
-    return json({ error: `KV write failed: ${e.message}` }, 500, origin);
+    const msg = e.message || '';
+    if (msg.includes('version') || msg.includes('CAS') || msg.includes('conflict')) {
+      return json({ error: 'Conflict: state changed, please retry' }, 409, origin);
+    }
+    return json({ error: `KV write failed: ${msg}` }, 500, origin);
   }
   
   // Invalidate room cache on mutation
