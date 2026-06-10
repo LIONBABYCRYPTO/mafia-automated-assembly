@@ -236,7 +236,7 @@
     // ── POLLING ──
     function startPolling() {
       if (pollInterval) clearInterval(pollInterval);
-      pollInterval = setInterval(pollGameState, 2000);
+      pollInterval = setInterval(pollGameState, 3500);
       pollGameState();
       // Start heartbeat every 30s
       if (!window.heartbeatInterval) {
@@ -252,64 +252,74 @@
     var playerName = '';
     function pollGameState() {
       if (!roomCode) return;
-      api('/api/rooms/' + roomCode).then(function(room) {
-        if (!room || !room.phase) return;
+      // Lightweight snapshot poll
+      api('/api/rooms/' + roomCode + '/snapshot').then(function(snap) {
+        if (!snap || !snap.phase) return;
 
         // Update waiting count while in lobby
-        if (room.phase === 'lobby') {
-          document.getElementById('waitingCount').textContent = room.playerCount || 0;
+        if (snap.phase === 'lobby') {
+          document.getElementById('waitingCount').textContent = snap.playerCount || 0;
           lastPhase = 'lobby';
           return;
         }
 
-        if (room.phase === 'victory') {
-          showVictory(room.winner);
+        if (snap.phase === 'victory') {
+          // Need full state for winner info
+          api('/api/rooms/' + roomCode).then(function(room) {
+            if (room && room.phase === 'victory') showVictory(room.winner);
+          });
           return;
         }
 
-        // Fetch role once when game starts
-        if (!playerRole && room.phase !== 'lobby') {
+        // Fetch role once when game starts (only when phase changes from lobby)
+        if (!playerRole && lastPhase === 'lobby') {
           fetchRole();
-          lastPhase = room.phase;
+          lastPhase = snap.phase;
           return;
         }
 
         // Only switch UI when phase actually changes
-        if (playerRole && room.phase !== lastPhase) {
-          lastPhase = room.phase;
+        if (playerRole && snap.phase !== lastPhase) {
+          lastPhase = snap.phase;
           nightActionSubmitted = false;
           voteSubmitted = false;
 
-          document.getElementById('nightScreen').classList.add('hidden');
-          document.getElementById('dayScreen').classList.add('hidden');
-          document.getElementById('resultScreen').classList.add('hidden');
-          if (window.wolfChatInterval) { clearInterval(window.wolfChatInterval); window.wolfChatInterval = null; }
+          // Fetch full state on phase change for complete data
+          api('/api/rooms/' + roomCode).then(function(room) {
+            if (!room || !room.phase) return;
+            document.getElementById('nightScreen').classList.add('hidden');
+            document.getElementById('dayScreen').classList.add('hidden');
+            document.getElementById('resultScreen').classList.add('hidden');
+            if (window.wolfChatInterval) { clearInterval(window.wolfChatInterval); window.wolfChatInterval = null; }
 
-          switch (room.phase) {
-            case 'night': showNightPhase(room.round); break;
-            case 'day_discussion': showDayDiscussion(); break;
-            case 'day_voting':
-            case 'day_vote': showVotePhase(); break;
-            case 'day_results': showDayResults(); break;
-          }
-          currentRound = room.round || 1;
+            switch (room.phase) {
+              case 'night': showNightPhase(room.round); break;
+              case 'day_discussion': showDayDiscussion(); break;
+              case 'day_voting':
+              case 'day_vote': showVotePhase(); break;
+              case 'day_results': showDayResults(); break;
+            }
+            currentRound = room.round || 1;
+            if (playerRole) updateTimer(room);
+          });
+          return;
         }
 
         // Update timer every poll
-        if (playerRole) updateTimer(room);
+        if (playerRole) {
+          api('/api/rooms/' + roomCode).then(function(room) {
+            if (room && room.phase) updateTimer(room);
+          });
+        }
 
         // Check if player is dead
         if (playerId) {
-          api('/api/players?room_code=' + roomCode).then(function(players) {
-            if (!players) return;
-            var me = players.find(function(p) { return p.id === playerId; });
-            if (me && !me.alive && room.phase !== 'victory') {
-              // Only show eliminated once (skip if already showing)
-              if (document.getElementById('resultScreen').classList.contains('hidden')) {
-                showEliminated();
-              }
+          // Check from snapshot's alivePlayerIds (much cheaper)
+          if (snap.alivePlayerIds && !snap.alivePlayerIds.includes(playerId) && snap.phase !== 'victory') {
+            if (document.getElementById('resultScreen').classList.contains('hidden')) {
+              showEliminated();
             }
-          }).catch(function() {});
+          }
         }
       }).catch(function() {});
     }

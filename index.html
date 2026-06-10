@@ -273,7 +273,7 @@ if (roomCode && hostToken) {
 const ADS_ENABLED = false;      // Show/hide ad banners
 const SPONSORS_ENABLED = true;  // Show sponsor banners
 const DONATIONS_ENABLED = true; // Show donation section
-const POLL_INTERVAL = 1000;
+const POLL_INTERVAL = 2000;
 const ONLINE_POLL_INTERVAL = 60000;
 
 if (ADS_ENABLED) {
@@ -378,56 +378,73 @@ function startPolling() {
   pollTimer = setInterval(pollState, POLL_INTERVAL);
 }
 
+let cachedPhase = 'lobby';
+let cachedRound = 0;
+let cachedAliveCount = 0;
+
 async function pollState() {
   if (!roomCode) return;
   try {
-    const r = await fetch(API_URL + '/api/rooms/' + roomCode);
-    const data = await r.json();
-    if (data.error) return;
+    // Lightweight snapshot poll first
+    const s = await fetch(API_URL + '/api/rooms/' + roomCode + '/snapshot');
+    const snap = await s.json();
+    if (snap.error) return;
 
-    if (data.phase === 'lobby') {
+    // In lobby: just update player count
+    if (snap.phase === 'lobby') {
+      cachedPhase = 'lobby';
       if (isGameActive) return;
+      // Need full state for player list in lobby
+      const r = await fetch(API_URL + '/api/rooms/' + roomCode);
+      const data = await r.json();
       document.getElementById('statTotal').textContent = data.playerCount;
       renderPlayerList('lobbyPlayerList', data.players, data.phase);
       updateOnlineDots(null);
       return;
     }
 
-    if (!isGameActive) {
-      isGameActive = true;
-      showScreen('screen-game');
-      document.getElementById('endBtn').classList.remove('hidden');
-      document.getElementById('roleDistributionCard').classList.remove('hidden');
+    // Phase or round changed — fetch full state
+    if (snap.phase !== cachedPhase || snap.round !== cachedRound || snap.aliveCount !== cachedAliveCount) {
+      cachedPhase = snap.phase;
+      cachedRound = snap.round;
+      cachedAliveCount = snap.aliveCount;
+
+      const r = await fetch(API_URL + '/api/rooms/' + roomCode);
+      const data = await r.json();
+      if (data.error) return;
+
+      if (!isGameActive) {
+        isGameActive = true;
+        showScreen('screen-game');
+        document.getElementById('endBtn').classList.remove('hidden');
+        document.getElementById('roleDistributionCard').classList.remove('hidden');
+      }
+      if (data.roles) updateRoleDistribution(data.roles);
+
+      document.getElementById('gameRound').textContent = data.round;
+      document.getElementById('gameAlive').textContent = data.aliveCount;
+      document.getElementById('gameDead').textContent = data.playerCount - data.aliveCount;
+
+      updatePhaseBanner(data.phase);
+      renderPlayerList('gamePlayerList', data.players, data.phase);
+      updateGameMessage(data);
+
+      if (data.phase === 'victory') showVictoryScreen(data);
+      updateGameControls(data.phase);
     }
-    if (data.roles) updateRoleDistribution(data.roles);
 
-    // Update stats
-    document.getElementById('gameRound').textContent = data.round;
-    document.getElementById('gameAlive').textContent = data.aliveCount;
-    document.getElementById('gameDead').textContent = data.playerCount - data.aliveCount;
-
-    // Phase banner
-    updatePhaseBanner(data.phase);
-
-    // Player list
-    renderPlayerList('gamePlayerList', data.players, data.phase);
-
-    // Message
-    updateGameMessage(data);
-
-    // Vote tally
-    if (data.phase === 'day_voting') {
+    // Vote tally updates every poll during voting (snapshot has vote count)
+    if (snap.phase === 'day_voting' || snap.phase === 'day_vote') {
       document.getElementById('voteTally').classList.remove('hidden');
       await updateVoteTally();
     } else {
       document.getElementById('voteTally').classList.add('hidden');
     }
 
-    // Victory
-    if (data.phase === 'victory') showVictoryScreen(data);
-
-    // Controls
-    updateGameControls(data.phase);
+    // Always update round/alive in stats bar even without full fetch
+    document.getElementById('gameRound').textContent = snap.round || cachedRound;
+    document.getElementById('gameAlive').textContent = snap.aliveCount || cachedAliveCount;
+    document.getElementById('gameDead').textContent = (snap.playerCount || 0) - (snap.aliveCount || 0);
 
   } catch(e) {}
 }
