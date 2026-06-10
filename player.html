@@ -225,14 +225,14 @@
     document.getElementById('joinRoomCode').textContent = roomCode || '---';
     if (!roomCode) { document.getElementById('joinError').textContent = 'No room code in URL'; document.getElementById('joinError').classList.remove('hidden'); }
 
-    // Auto-reconnect if saved session exists
-    if (playerId && playerToken && roomCode) {
-      document.getElementById('joinScreen').classList.add('hidden');
-      document.getElementById('waitingScreen').classList.remove('hidden');
-      var nameInput = document.getElementById('playerNameInput');
-      if (nameInput) nameInput.value = 'Reconnecting...';
-      startPolling();
-    }
+    // Auto-reconnect if saved session exists (disabled for multi-tab testing)
+    // if (playerId && playerToken && roomCode) {
+    //   document.getElementById('joinScreen').classList.add('hidden');
+    //   document.getElementById('waitingScreen').classList.remove('hidden');
+    //   var nameInput = document.getElementById('playerNameInput');
+    //   if (nameInput) nameInput.value = 'Reconnecting...';
+    //   startPolling();
+    // }
 
     // ── JOIN ──
     function joinGame() {

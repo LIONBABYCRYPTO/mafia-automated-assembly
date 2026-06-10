@@ -109,10 +109,7 @@ async function handleRequest(request) {
         if (state.players.some(p => p.name.toLowerCase() === (body.name || '').toLowerCase().trim())) {
           return json({ error: 'Name already taken' }, 400, origin);
         }
-        // Device duplicate check
-        if (body.device_id && state.players.some(p => p.deviceId === body.device_id)) {
-          return json({ error: 'Device already in room' }, 400, origin);
-        }
+        // Device duplicate check (disabled for multi-tab testing)
         const userId = generateToken();
         state.players.push({
           id: state.nextPlayerId++, userId, name: body.name || 'Player',
