@@ -6,87 +6,93 @@
 <title>World Cup 2026 · Knockout Bracket</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,Roboto,sans-serif;background:#0a0a12;color:#e0e0e0;min-height:100vh}
-.wrapper{padding:24px;max-width:1400px;margin:0 auto}
+body{font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,Roboto,sans-serif;background:#0a0a12;color:#e0e0e0;min-height:100vh;overflow-x:auto}
+.wrapper{padding:20px;max-width:1600px;margin:0 auto;min-width:1200px}
 
-/* Header - poster style */
-.header{text-align:center;margin-bottom:20px}
-.header h1{font-size:36px;background:linear-gradient(135deg,#ffd700 0%,#f5a623 50%,#ff6b35 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;font-weight:900;letter-spacing:4px;margin-bottom:4px}
-.header .sub{letter-spacing:3px;font-size:11px;color:#555;text-transform:uppercase}
-.header .divider{width:100px;height:2px;background:linear-gradient(90deg,transparent,#ffd700,transparent);margin:12px auto 8px}
-.header .count{font-size:12px;color:#666}
-.header .count span{color:#ffd700;font-weight:600}
+/* Header */
+.header{text-align:center;margin-bottom:16px}
+.header h1{font-size:32px;background:linear-gradient(135deg,#ffd700 0%,#f5a623 50%,#ff6b35 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;font-weight:900;letter-spacing:3px}
+.header .sub{font-size:11px;color:#555;letter-spacing:3px;text-transform:uppercase}
+.header .bar{width:80px;height:2px;background:linear-gradient(90deg,transparent,#ffd700,transparent);margin:8px auto}
+.header .info{font-size:11px;color:#666}
 
-/* Bracket container */
-.bracket-panel{background:linear-gradient(180deg,#0d0d1a,#0a0a12);border:1px solid #1a1a2e;border-radius:16px;padding:20px 12px;position:relative;overflow:hidden}
-.bracket-panel::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,#ffd700,transparent);opacity:0.5}
+/* Groups row - horizontal strip */
+.groups-strip{display:flex;gap:6px;margin-bottom:16px;flex-wrap:nowrap;justify-content:center}
+.gb{flex:0 0 auto;width:150px;background:linear-gradient(180deg,#111124,#0d0d1a);border:1px solid #1a1a30;border-radius:8px;padding:6px;text-align:center}
+.gb .gl{font-size:10px;font-weight:700;color:#ffd700;letter-spacing:1px;margin-bottom:3px;border-bottom:1px solid #1a1a30;padding-bottom:3px}
+.gb .gt{font-size:10px;line-height:1.5}
+.gb .gt .r{display:flex;justify-content:space-between;align-items:center;padding:1px 2px;gap:2px}
+.gb .gt .r .fl{font-size:11px}
+.gb .gt .r .nm{flex:1;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gb .gt .r .pt{font-weight:600;min-width:14px;text-align:right}
+.gb .gt .r.q .nm{color:#a5d6a7;font-weight:600}
+.gb .gt .r.q .pt{color:#a5d6a7}
+.gb .gt .r.b .nm{color:#ffcc80}
+.gb .gt .r.b .pt{color:#ffcc80}
+.gb .gt .r.o .nm{color:#555}
+.gb .gt .r.o .pt{color:#555}
+.gb .gl .adj{font-weight:400;color:#888;font-size:8px;margin-left:2px}
+.gb .gl .won{color:#a5d6a7}
+.gb .gl .run{color:#f5a623}
 
-.bracket{display:flex;gap:0;min-width:1050px;position:relative;z-index:1}
+/* Bracket panel */
+.bp{background:linear-gradient(180deg,#0d0d1a,#0a0a12);border:1px solid #1a1a2e;border-radius:12px;padding:16px 10px;position:relative;overflow:hidden}
+.bp::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,#ffd700,transparent);opacity:0.4}
+
+.bracket{display:flex;gap:0;min-width:1000px;position:relative;z-index:1}
 .bracket-col{flex:1;display:flex;flex-direction:column;position:relative}
 
-/* Round labels */
-.round-label{text-align:center;text-transform:uppercase;letter-spacing:2px;font-size:9px;font-weight:700;color:#444;border-bottom:1px solid #151525;padding:4px 0 6px;margin-bottom:6px}
-.round-label.active{color:#ffd700;border-bottom-color:#ffd700}
+.rh{text-align:center;text-transform:uppercase;letter-spacing:1.5px;font-size:9px;font-weight:700;color:#444;border-bottom:1px solid #151525;padding:3px 0 5px;margin-bottom:4px}
+.rh.act{color:#ffd700;border-bottom-color:#ffd700}
 
-/* Match cards */
-.m{background:#111124;border:1px solid #1a1a30;border-radius:8px;padding:5px 8px;margin:1px 0;transition:all .15s;position:relative}
+/* Match */
+.m{background:#111124;border:1px solid #1a1a30;border-radius:6px;padding:3px 6px;margin:1px 0;transition:border-color .15s;position:relative}
 .m:hover{border-color:#ffd70033}
-.m .team{display:flex;justify-content:space-between;align-items:center;padding:1px 0;font-size:11px;gap:4px}
-.m .team .fl{font-size:13px;width:20px;text-align:center;flex-shrink:0}
-.m .team .nm{flex:1;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px}
-.m .team .sc{font-weight:700;font-size:11px;min-width:18px;text-align:right;flex-shrink:0}
-.m .team.win .nm{color:#ffd700;font-weight:600}
-.m .team.loss .nm{color:#555}
-.m .team.win .sc{color:#ffd700}
-.m .team.loss .sc{color:#444}
-.m.tbd{opacity:0.15}
-.m.tbd .nm{color:#666}
+.m .tm{display:flex;justify-content:space-between;align-items:center;padding:1px 0;font-size:10px;gap:3px;line-height:1.3}
+.m .tm .fl{font-size:12px;width:16px;text-align:center;flex-shrink:0}
+.m .tm .nm{flex:1;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:10px}
+.m .tm .sc{font-weight:700;font-size:10px;min-width:16px;text-align:right;flex-shrink:0}
+.m .tm.w .nm{color:#ffd700;font-weight:600}
+.m .tm.w .sc{color:#ffd700}
+.m .tm.l .nm{color:#555}
+.m .tm.l .sc{color:#444}
+.m.tbd{opacity:0.12}
 
-/* Connector pipe */
-.bracket-col:not(:last-child) .m{margin-right:10px}
-.bracket-col:not(:last-child) .m::after{content:'';position:absolute;right:-10px;top:50%;width:10px;height:2px;background:#1a1a30}
-.bracket-col:not(:last-child)::after{content:'';position:absolute;right:-1px;top:0;bottom:0;width:2px;background:#1a1a30}
+/* Connectors */
+.bracket-col:not(:last-child) .m{margin-right:8px}
+.bracket-col:not(:last-child) .m::after{content:'';position:absolute;right:-8px;top:50%;width:8px;height:1px;background:#1a1a30}
+.bracket-col:not(:last-child)::after{content:'';position:absolute;right:0;top:0;bottom:0;width:1px;background:#1a1a30}
 
-/* Spacer rows for tree shape */
-.sp{min-height:0;border:none;background:transparent;pointer-events:none;margin:0;padding:0;opacity:0}
+/* Spacer */
+.sp{opacity:0;border:none;background:transparent;pointer-events:none;margin:0;padding:0;height:2px}
 
-/* Group qualifiers bar */
-.qualifiers{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-top:16px;padding-top:12px;border-top:1px solid #151525}
-@media(max-width:768px){.qualifiers{grid-template-columns:repeat(3,1fr)}}
-.qual-block{background:#0d0d1a;border:1px solid #151525;border-radius:8px;padding:6px;text-align:center}
-.qual-block .gl{font-size:10px;font-weight:700;color:#ffd700;letter-spacing:1px;margin-bottom:3px}
-.qual-block .gt{font-size:10px;line-height:1.5}
-.qual-block .gt .t{display:flex;justify-content:space-between;padding:0 2px}
-.qual-block .gt .t.q{color:#a5d6a7;font-weight:600}
-.qual-block .gt .t.b{color:#ffcc80}
-.qual-block .gt .t.o{color:#555}
-
-/* Footer */
-.footer{text-align:center;font-size:10px;color:#444;margin-top:12px;padding-top:8px;border-top:1px solid #151525}
-.footer .badge{display:inline-block;margin:0 6px}
-.footer .badge .dot{display:inline-block;width:6px;height:6px;border-radius:50%;margin-right:3px}
-.footer .badge .dot.g{background:#a5d6a7}
-.footer .badge .dot.y{background:#ffcc80}
-.footer .badge .dot.gr{background:#555}
-
-/* Live indicator */
-.live-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#4caf50;animation:blink 1.5s ease-in-out infinite;margin-right:4px;vertical-align:middle}
-@keyframes blink{0%{opacity:1}50%{opacity:0.2}100%{opacity:1}}
+/* Legend */
+.l{text-align:center;font-size:9px;color:#444;margin-top:10px;padding-top:6px;border-top:1px solid #151525}
+.l .b{display:inline-block;margin:0 4px}
+.l .b .d{display:inline-block;width:5px;height:5px;border-radius:50%;margin-right:2px;vertical-align:middle}
+.l .b .d.g{background:#a5d6a7}
+.l .b .d.y{background:#ffcc80}
+.l .b .d.gr{background:#555}
 
 .loading{text-align:center;padding:100px 20px;color:#555}
-.loading .spinner{width:36px;height:36px;border:2px solid #1a1a2e;border-top:2px solid #ffd700;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 16px}
+.loading .sp{width:32px;height:32px;border:2px solid #1a1a2e;border-top:2px solid #ffd700;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 12px}
 @keyframes spin{to{transform:rotate(360deg)}}
 
-/* Print-friendly */
-@media print{body{background:#fff}.wrapper{padding:12px}.header h1{-webkit-text-fill-color:#b8860b;color:#b8860b}.bracket-panel{background:#fff;border-color:#ccc}.bracket-panel::before{display:none}.m{background:#f8f8f8;border-color:#ddd}.m .team.win .nm{color:#b8860b}.qual-block{background:#f8f8f8;border-color:#ddd}.qual-block .gl{color:#b8860b}.footer{border-color:#ddd}}
+/* Score highlight */
+.m .tm.w{background:linear-gradient(90deg,transparent,rgba(255,215,0,0.05))}
+
+/* Live */
+.ld{display:inline-block;width:6px;height:6px;border-radius:50%;background:#4caf50;animation:bl 1.5s ease-in-out infinite;margin-right:3px;vertical-align:middle}
+@keyframes bl{0%{opacity:1}50%{opacity:0.2}100%{opacity:1}}
+
+@media print{body{background:#fff}.wrapper{min-width:auto}.gb{background:#f8f8f8;border-color:#ddd}.bp{background:#fff;border-color:#ccc}.bp::before{display:none}.m{background:#f8f8f8;border-color:#ddd}.m .tm.w .nm{color:#b8860b}.header h1{-webkit-text-fill-color:#b8860b;color:#b8860b}}
 </style>
 </head>
 <body>
-
-<div id="app"><div class="loading"><div class="spinner"></div></div></div>
+<div id="app"><div class="loading"><div class="sp"></div></div></div>
 
 <script>
-var API='https://mafia-game.lionbabycrypto.workers.dev/api/wc'
+var A='https://mafia-game.lionbabycrypto.workers.dev/api/wc'
 var T={1:"Mexico",2:"South Africa",3:"South Korea",4:"Czechia",5:"Canada",6:"Bosnia",7:"Qatar",8:"Switzerland",9:"Brazil",10:"Morocco",11:"Haiti",12:"Scotland",13:"USA",14:"Paraguay",15:"Australia",16:"Turkey",17:"Germany",18:"Curaçao",19:"Ivory Coast",20:"Ecuador",21:"Netherlands",22:"Japan",23:"Sweden",24:"Tunisia",25:"Belgium",26:"Egypt",27:"Iran",28:"New Zealand",29:"Spain",30:"Cape Verde",31:"Saudi Arabia",32:"Uruguay",33:"France",34:"Senegal",35:"Iraq",36:"Norway",37:"Argentina",38:"Algeria",39:"Austria",40:"Jordan",41:"Portugal",42:"DR Congo",43:"Uzbekistan",44:"Colombia",45:"England",46:"Croatia",47:"Ghana",48:"Panama"}
 var Fl={1:"🇲🇽",2:"🇿🇦",3:"🇰🇷",4:"🇨🇿",5:"🇨🇦",6:"🇧🇦",7:"🇶🇦",8:"🇨🇭",9:"🇧🇷",10:"🇲🇦",11:"🇭🇹",12:"🏴󠁧󠁢󠁳󠁣󠁴󠁿",13:"🇺🇸",14:"🇵🇾",15:"🇦🇺",16:"🇹🇷",17:"🇩🇪",18:"🇨🇼",19:"🇨🇮",20:"🇪🇨",21:"🇳🇱",22:"🇯🇵",23:"🇸🇪",24:"🇹🇳",25:"🇧🇪",26:"🇪🇬",27:"🇮🇷",28:"🇳🇿",29:"🇪🇸",30:"🇨🇻",31:"🇸🇦",32:"🇺🇾",33:"🇫🇷",34:"🇸🇳",35:"🇮🇶",36:"🇳🇴",37:"🇦🇷",38:"🇩🇿",39:"🇦🇹",40:"🇯🇴",41:"🇵🇹",42:"🇨🇩",43:"🇺🇿",44:"🇨🇴",45:"🏴󠁧󠁢󠁥󠁮󠁧󠁿",46:"🇭🇷",47:"🇬🇭",48:"🇵🇦"}
 var Gr={A:[1,2,3,4],B:[5,6,7,8],C:[9,10,11,12],D:[13,14,15,16],E:[17,18,19,20],F:[21,22,23,24],G:[25,26,27,28],H:[29,30,31,32],I:[33,34,35,36],J:[37,38,39,40],K:[41,42,43,44],L:[45,46,47,48]}
@@ -95,7 +101,7 @@ var Sec={S1:{g:['A','B','C'],w:[],r:[]},S2:{g:['D','E','F'],w:[],r:[]},S3:{g:['G
 function es(s){var d=document.createElement('div');d.textContent=s;return d.innerHTML}
 
 function build(gm){
-  // Standings
+  // ── Standings ──
   var st={}
   Object.keys(Gr).forEach(function(k){st[k]={};Gr[k].forEach(function(t){st[k][t]={p:0,w:0,d:0,l:0,gf:0,ga:0,gd:0,pt:0}})})
   gm.forEach(function(g){
@@ -106,7 +112,7 @@ function build(gm){
     u(ht,hs,as);u(at,as,hs)
   })
 
-  // Qualifiers
+  // ── Qualifiers ──
   var q={},tp=[]
   Object.keys(st).sort().forEach(function(k){
     var s=Object.keys(st[k]).map(function(t){return{id:+t,s:st[k][t]}})
@@ -120,114 +126,108 @@ function build(gm){
   var qids=[]
   Object.keys(q).sort().forEach(function(k){qids.push(q[k].w.id);qids.push(q[k].r.id)})
   Object.keys(bt).forEach(function(t){qids.push(+t)})
-  var complete=qids.length>=30
+  var full=qids.length>=30
 
-  // Bracket pairs by section
-  var secs=JSON.parse(JSON.stringify(Sec))
-  Object.keys(secs).forEach(function(s){
-    secs[s].g.forEach(function(k){if(q[k]){secs[s].w.push(q[k].w.id);secs[s].r.push(q[k].r.id)}})
+  // ── Build match lookup ──
+  var results={}
+  gm.forEach(function(g){
+    if(g.finished!='TRUE')return
+    var h=+g.home_team_id,a=+g.away_team_id,hs=+g.home_score||0,as=+g.away_score||0
+    var key=[Math.min(h,a),Math.max(h,a)].join('-')
+    results[key]=[h,a,hs,as]
   })
+  function getScore(t1,t2){
+    if(!t1||!t2)return null
+    var key=[Math.min(t1,t2),Math.max(t1,t2)].join('-')
+    return results[key]||null
+  }
+
+  // ── Sections ──
+  var sn=JSON.parse(JSON.stringify(Sec))
+  Object.keys(sn).forEach(function(s){sn[s].g.forEach(function(k){if(q[k]){sn[s].w.push(q[k].w.id);sn[s].r.push(q[k].r.id)}})})
   var tp3=[[],[],[],[]]
   Object.keys(bt).forEach(function(t,i){tp3[i%4].push(+t)})
 
-  // Match cell
-  function mc(h,a,hs,as,fn){
-    if(!h||!a)return '<div class="m tbd"><div class="team loss"><span class="fl">?</span><span class="nm">TBD</span><span class="sc">-</span></div><div class="team loss"><span class="fl">?</span><span class="nm">TBD</span><span class="sc">-</span></div></div>'
+  function mc(h,a){
+    var sc=getScore(h,a)
+    var fn=!!sc
+    var hs=fn?sc[2]:null,as=fn?sc[3]:null
+    if(!h||!a)return '<div class="m tbd"><div class="tm l"><span class="nm">—</span></div><div class="tm l"><span class="nm">—</span></div></div>'
     var hw=fn&&hs>as,aw=fn&&as>hs
-    var n1=T[h]||'?',n2=T[a]||'?',f1=Fl[h]||'',f2=Fl[a]||'',s1=fn?hs:'',s2=fn?as:''
-    return '<div class="m"><div class="team '+(hw?'win':'loss')+'"><span class="fl">'+f1+'</span><span class="nm">'+es(n1)+'</span><span class="sc">'+s1+'</span></div><div class="team '+(aw?'win':'loss')+'"><span class="fl">'+f2+'</span><span class="nm">'+es(n2)+'</span><span class="sc">'+s2+'</span></div></div>'
+    var n1=T[h]||'?',n2=T[a]||'?',f1=Fl[h]||'',f2=Fl[a]||''
+    return '<div class="m"><div class="tm '+(hw?'w':'l')+'"><span class="fl">'+f1+'</span><span class="nm">'+es(n1)+'</span>'+'<span class="sc">'+(fn?hs:'')+'</span></div><div class="tm '+(aw?'w':'l')+'"><span class="fl">'+f2+'</span><span class="nm">'+es(n2)+'</span>'+'<span class="sc">'+(fn?as:'')+'</span></div></div>'
   }
 
-  // Build bracket tree with proper alignment
-  // R32 = 16 matches, R16 = 8, QF = 4, SF = 2, Final = 1
-  // Each round has spacers to create the tree
-
-  // Generate R32 left and right halves
+  // ── Generate R32 pairs ──
   var L32=[],R32=[]
-  // Section 1 (left top): W1A vs 3rd[0], RU-C vs W-C, W1B vs 3rd[1], RU-B vs W-B, W1C vs 3rd[2], RU-A vs W-A
-  L32.push({h:secs.S1.w[0],a:tp3[0][0]||0},{h:secs.S1.r[2],a:secs.S1.w[2]})
-  L32.push({h:secs.S1.w[1],a:tp3[0][1]||0},{h:secs.S1.r[1],a:secs.S1.w[1]})
-  L32.push({h:secs.S1.w[2],a:tp3[0][2]||0},{h:secs.S1.r[0],a:secs.S1.w[0]})
-  // Section 2 (left bottom): W1D vs 3rd[3], RU-F vs W-F, W1E vs 3rd[4], RU-E vs W-E, W1F vs 3rd[5], RU-D vs W-D
-  L32.push({h:secs.S2.w[0],a:tp3[1][0]||0},{h:secs.S2.r[2],a:secs.S2.w[2]})
-  L32.push({h:secs.S2.w[1],a:tp3[1][1]||0},{h:secs.S2.r[1],a:secs.S2.w[1]})
-  L32.push({h:secs.S2.w[2],a:tp3[1][2]||0},{h:secs.S2.r[0],a:secs.S2.w[0]})
-  // Section 3 (right top): W1G vs 3rd[6], RU-I vs W-I, W1H vs 3rd[7], RU-H vs W-H, W1I vs 3rd[8], RU-G vs W-G
-  R32.push({h:secs.S3.w[0],a:tp3[2][0]||0},{h:secs.S3.r[2],a:secs.S3.w[2]})
-  R32.push({h:secs.S3.w[1],a:tp3[2][1]||0},{h:secs.S3.r[1],a:secs.S3.w[1]})
-  R32.push({h:secs.S3.w[2],a:tp3[2][2]||0},{h:secs.S3.r[0],a:secs.S3.w[0]})
-  // Section 4 (right bottom): W1J vs 3rd[9], RU-L vs W-L, W1K vs 3rd[10], RU-K vs W-K, W1L vs 3rd[11], RU-J vs W-J
-  R32.push({h:secs.S4.w[0],a:tp3[3][0]||0},{h:secs.S4.r[2],a:secs.S4.w[2]})
-  R32.push({h:secs.S4.w[1],a:tp3[3][1]||0},{h:secs.S4.r[1],a:secs.S4.w[1]})
-  R32.push({h:secs.S4.w[2],a:tp3[3][2]||0},{h:secs.S4.r[0],a:secs.S4.w[0]})
+  L32.push({h:sn.S1.w[0],a:tp3[0][0]||0},{h:sn.S1.r[2],a:sn.S1.w[2]})
+  L32.push({h:sn.S1.w[1],a:tp3[0][1]||0},{h:sn.S1.r[1],a:sn.S1.w[1]})
+  L32.push({h:sn.S1.w[2],a:tp3[0][2]||0},{h:sn.S1.r[0],a:sn.S1.w[0]})
+  L32.push({h:sn.S2.w[0],a:tp3[1][0]||0},{h:sn.S2.r[2],a:sn.S2.w[2]})
+  L32.push({h:sn.S2.w[1],a:tp3[1][1]||0},{h:sn.S2.r[1],a:sn.S2.w[1]})
+  L32.push({h:sn.S2.w[2],a:tp3[1][2]||0},{h:sn.S2.r[0],a:sn.S2.w[0]})
+  R32.push({h:sn.S3.w[0],a:tp3[2][0]||0},{h:sn.S3.r[2],a:sn.S3.w[2]})
+  R32.push({h:sn.S3.w[1],a:tp3[2][1]||0},{h:sn.S3.r[1],a:sn.S3.w[1]})
+  R32.push({h:sn.S3.w[2],a:tp3[2][2]||0},{h:sn.S3.r[0],a:sn.S3.w[0]})
+  R32.push({h:sn.S4.w[0],a:tp3[3][0]||0},{h:sn.S4.r[2],a:sn.S4.w[2]})
+  R32.push({h:sn.S4.w[1],a:tp3[3][1]||0},{h:sn.S4.r[1],a:sn.S4.w[1]})
+  R32.push({h:sn.S4.w[2],a:tp3[3][2]||0},{h:sn.S4.r[0],a:sn.S4.w[0]})
 
-  // Build columns
-  var cols = [
-    {label:'R32',cnt:16,ms:L32.concat(R32),c:'c32'},
-    {label:'R16',cnt:8,ms:[{},{},{},{},{},{},{},{}],c:'c16'},
-    {label:'QF',cnt:4,ms:[{},{},{},{}],c:'cqf'},
-    {label:'SF',cnt:2,ms:[{},{}],c:'csf'},
-    {label:'FINAL',cnt:1,ms:[{}],c:'cfn'}
+  // ── Build bracket columns ──
+  var cols=[
+    {l:'ROUND OF 32',c:16,m:L32.concat(R32)},
+    {l:'ROUND OF 16',c:8,m:[{},{},{},{},{},{},{},{}]},
+    {l:'QUARTER-FINALS',c:4,m:[{},{},{},{}]},
+    {l:'SEMI-FINALS',c:2,m:[{},{}]},
+    {l:'🏆 FINAL',c:1,m:[{}]}
   ]
 
-  var bhtml=''
-  cols.forEach(function(col,ci){
-    bhtml+='<div class="bracket-col">'
-    bhtml+='<div class="round-label'+(ci==4?' active':'')+'">'+col.label+'</div>'
-    var total=col.cnt
-    var prev=ci>0?cols[ci-1].cnt:0
-    // For proper tree, each match in this column connects to 2 from previous
-    // Pairs of consecutive matches merge
-    for(var m=0;m<total;m++){
-      // Add spacers above matches in deeper rounds
-      if(ci>0&&m>0){
-        var spH=Math.pow(2,ci)-1
-        for(var s=0;s<spH;s++){
-          bhtml+='<div class="m sp" style="opacity:0;height:2px;border:none"></div>'
-        }
-      }
-      var match=col.ms[m]
-      if(match&&match.h&&match.a) bhtml+=mc(match.h,match.a,null,null,false)
-      else if(ci==0&&match&&match.h) bhtml+=mc(match.h,match.a||0,null,null,false)
-      else bhtml+='<div class="m tbd"><div class="team"><span class="nm">—</span></div><div class="team"><span class="nm">—</span></div></div>'
+  var bh=''
+  cols.forEach(function(co,ci){
+    bh+='<div class="bracket-col">'
+    bh+='<div class="rh'+(ci==4?' act':'')+'">'+co.l+'</div>'
+    for(var m=0;m<co.c;m++){
+      if(ci>0&&m>0){var sp=Math.pow(2,ci)-1;for(var s=0;s<sp;s++)bh+='<div class="m sp"></div>'}
+      var mt=co.m[m]
+      if(mt&&mt.h&&mt.a) bh+=mc(mt.h,mt.a)
+      else bh+='<div class="m tbd"><div class="tm l"><span class="nm">—</span></div><div class="tm l"><span class="nm">—</span></div></div>'
     }
-    bhtml+='</div>'
+    bh+='</div>'
   })
 
-  // Qualifiers grid
-  var ghtml=''
+  // ── Groups strip (top) ──
+  var gs=''
   Object.keys(q).sort().forEach(function(k){
     var info=q[k]
-    ghtml+='<div class="qual-block"><div class="gl">Group '+es(k)+'</div><div class="gt">'
+    // Count how many have finished
+    var fn=0;info.x.forEach(function(t){if(t.s.p==3&&t.s.p>0)fn++})
+    gs+='<div class="gb">'
+    gs+='<div class="gl"><span class="won">'+es(k)+'</span></div><div class="gt">'
     info.x.forEach(function(t,i){
-      var r=i+1,cl='t',qd=r<=2||bt[t.id],tb=bt[t.id]&&r>2
+      var r=i+1,cl='r',qd=r<=2||bt[t.id],tb=bt[t.id]&&r>2
       if(qd&&r<=2)cl+=' q'
       else if(tb)cl+=' b'
       else if(t.s.p==3)cl+=' o'
-      ghtml+='<div class="'+cl+'"><span>'+(Fl[t.id]||'')+' '+es(T[t.id]||'?')+'</span><span>'+(t.s.pt||0)+'</span></div>'
+      gs+='<div class="'+cl+'"><span class="fl">'+(Fl[t.id]||'')+'</span><span class="nm">'+es(T[t.id]||'?')+'</span><span class="pt">'+t.s.pt+'</span></div>'
     })
-    ghtml+='</div></div>'
+    gs+='</div></div>'
   })
 
-  var liveCount = gm.filter(function(g){var e=g.time_elapsed;return e&&e!='notstarted'&&e!='finished'&&g.finished!='TRUE'}).length
+  // ── Assemble ──
+  var lc=gm.filter(function(g){var e=g.time_elapsed;return e&&e!='notstarted'&&e!='finished'&&g.finished!='TRUE'}).length
 
   var out='<div class="wrapper">'
-  out+='<div class="header">'
-  out+='<h1>🏆 WORLD CUP 2026</h1>'
-  out+='<div class="sub">United&nbsp;States · Canada · Mexico</div>'
-  out+='<div class="divider"></div>'
-  out+='<div class="count">'+(liveCount?'<span class="live-dot"></span> ':'')+gm.length+' Matches · <span>'+(complete?qids.length+' Qualified':qids.length+' of 32 Qualified')+'</span></div>'
-  out+='</div>'
-  out+='<div class="bracket-panel"><div class="bracket">'+bhtml+'</div></div>'
-  out+='<div class="qualifiers">'+ghtml+'</div>'
-  out+='<div class="footer"><span class="badge"><span class="dot g"></span> Adv</span><span class="badge"><span class="dot y"></span> 3rd</span><span class="badge"><span class="dot gr"></span> Out</span></div>'
+  out+='<div class="header"><h1>🏆 WORLD CUP 2026</h1><div class="sub">United&nbsp;States · Canada · Mexico</div><div class="bar"></div><div class="info">'+(lc?'<span class="ld"></span> ':'')+gm.length+' Matches · '+(full?qids.length+' Teams Qualified':qids.length+' of 32 Qualified')+'</div></div>'
+  out+='<div class="groups-strip">'+gs+'</div>'
+  out+='<div class="bp"><div class="bracket">'+bh+'</div></div>'
+  out+='<div class="l"><span class="b"><span class="d g"></span>W</span><span class="b"><span class="d y"></span>3rd</span><span class="b"><span class="d gr"></span>Out</span></div>'
   out+='</div>'
 
   document.getElementById('app').innerHTML=out
 }
 
-fetch(API).then(function(r){return r.json()}).then(function(d){build(d.games||[])}).catch(function(e){
-  document.getElementById('app').innerHTML='<div class="loading" style="color:#c62828;font-size:14px;">'+es(e.message)+'</div>'
+fetch(A).then(function(r){return r.json()}).then(function(d){build(d.games||[])}).catch(function(e){
+  document.getElementById('app').innerHTML='<div class="loading" style="color:#c62828">'+es(e.message)+'</div>'
 })
 </script>
 </body>
