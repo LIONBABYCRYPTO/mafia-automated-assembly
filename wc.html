@@ -30,16 +30,23 @@ td.l{text-align:left}
 .legend .t{background:#332200;color:#ffcc80}
 .legend .o{background:#1a0a0a;color:#ef9a9a}
 
-/* Knockout Bracket */
-.bracket{display:flex;gap:8px;overflow-x:auto;padding:4px 0}
-.bracket-col{display:flex;flex-direction:column;gap:4px;min-width:130px}
-.bracket-match{background:#1a1a2e;border:1px solid #2a2a3e;border-radius:8px;padding:6px 8px;font-size:11px;cursor:default;transition:background .15s}
-.bracket-match:hover{border-color:#ffd700}
-.bracket-match .team{display:flex;justify-content:space-between;align-items:center;padding:2px 0}
+/* Knockout Bracket — Tree Layout */
+.bracket{display:flex;gap:0;overflow-x:auto;padding:10px 0;min-height:400px}
+.bracket-col{display:flex;flex-direction:column;justify-content:space-around;min-width:150px;position:relative}
+.bracket-col:not(:last-child)::after{content:'';position:absolute;right:-1px;top:0;bottom:0;width:2px;background:#2a2a3e}
+.bracket-match{background:#1a1a2e;border:1px solid #2a2a3e;border-radius:8px;padding:5px 8px;font-size:11px;position:relative;margin:2px 0;transition:all .2s}
+.bracket-match:hover{border-color:#ffd700;transform:scale(1.02);z-index:2}
+.bracket-match .team{display:flex;justify-content:space-between;align-items:center;padding:1px 0;gap:4px}
+.bracket-match .team .name{flex:1;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .bracket-match .team.winner{color:#ffd700;font-weight:600}
-.bracket-match .team.loser{color:#888}
-.bracket-match .score{font-weight:700;font-size:13px}
-.bracket-round{color:#888;font-size:10px;text-transform:uppercase;text-align:center;padding:4px 0;font-weight:600}
+.bracket-match .team.loser{color:#666}
+.bracket-match .score{font-weight:700;font-size:12px;min-width:24px;text-align:right}
+.bracket-round{color:#888;font-size:9px;text-transform:uppercase;text-align:center;padding:2px 0 4px;font-weight:600;letter-spacing:1px}
+.bracket-connector{position:absolute;width:16px;height:2px;background:#2a2a3e;right:-17px;top:50%}
+.bracket-vline{position:absolute;width:2px;background:#2a2a3e;right:-17px}
+/* connector lines between columns */
+.bracket-col:not(:last-child) .bracket-match{margin-right:16px}
+.connector-right{position:absolute;width:16px;height:2px;background:#2a2a3e;right:-18px;top:50%}
 .groups-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:8px}
 .match-row td{padding:6px 4px}
 .toggle-btn{background:none;border:1px solid #2a2a3e;color:#888;padding:3px 8px;border-radius:6px;font-size:10px;cursor:pointer}
@@ -111,75 +118,123 @@ function gq(standings){
 }
 
 function render(games){
-  var st=cs(games),ql=gq(st),gq=ql.gq,bt=ql.bt
+  var st=cs(games),ql=gq(st),gqObj=ql.gq,bt=ql.bt
   var now=new Date(),mcount=games.length
   document.getElementById('matchCount').textContent=mcount+' matches'
   document.getElementById('lastUpdated').textContent=now.toLocaleTimeString()
   
   // ---- BRACKET TAB ----
   var qids=[]
-  Object.keys(gq).sort().forEach(function(gr){qids.push(gq[gr].q[0].id);qids.push(gq[gr].q[1].id)})
+  Object.keys(gqObj).sort().forEach(function(gr){qids.push(gqObj[gr].q[0].id);qids.push(gqObj[gr].q[1].id)})
   Object.keys(bt).forEach(function(t){qids.push(+t)})
   
   var bh='<div class="card" style="padding:10px;">'
-  bh+='<div style="font-size:12px;color:#888;margin-bottom:8px;text-align:center;font-weight:600;">🏆 KNOCKOUT BRACKET — 32 Teams Advance</div>'
+  bh+='<div style="font-size:12px;color:#888;margin-bottom:8px;text-align:center;">🏆 <span style="font-weight:600;color:#ffd700;">KNOCKOUT BRACKET</span> · 32 Teams</div>'
   
   if(qids.length>=30){
-    // Group winners/runners
+    // Build group qualifiers
     var cols={}
-    var grps=Object.keys(gq).sort()
-    grps.forEach(function(gr){cols[gr]={w:gq[gr].q[0].id,r:gq[gr].q[1].id}})
+    var grps=Object.keys(gqObj).sort()
+    grps.forEach(function(gr){cols[gr]={w:gqObj[gr].q[0].id,r:gqObj[gr].q[1].id}})
+    var tpList=Object.keys(bt)
     
-    bh+='<div class="bracket">'
-    // Column 1: Group Winners + Runners
-    var c1='',c2='',c3='',c4='',c5=''
-    var pairs=[
-      [['A'],['D'],['G'],['J']],
-      [['B'],['E'],['H'],['K']],
-      [['C'],['F'],['I'],['L']]
-    ]
+    // Define the knockout bracket pairs (winner advances)
+    // 32 teams: 12 group winners + 12 runners-up + 8 best 3rd = 32
+    // Brackets based on 2026 format:
+    // R32: W(section1) vs 3rd(section1), RU(section2) vs W(section2), etc.
     
-    // Group winner column
-    var w='<div class="bracket-col">'
-    grps.forEach(function(gr){
-      var t=cols[gr].w,n=T[t]||'?',f=F[t]||''
-      w+='<div class="bracket-match"><div style="font-size:9px;color:#888;margin-bottom:2px;">Group '+gr+' Winner</div><div class="team winner">'+f+' '+esc(n)+'</div></div>'
-    })
-    w+='</div>'
-    
-    // Runner-up column
-    var r='<div class="bracket-col">'
-    grps.forEach(function(gr){
-      var t=cols[gr].r,n=T[t]||'?',f=F[t]||''
-      r+='<div class="bracket-match"><div style="font-size:9px;color:#888;margin-bottom:2px;">Group '+gr+' RU</div><div class="team">'+f+' '+esc(n)+' ✅</div></div>'
-    })
-    r+='</div>'
-    
-    bh+=w+r
-    
-    // Best third placed
-    var tp=Object.keys(bt)
-    if(tp.length){
-      var tpCol='<div class="bracket-col">'
-      tpCol+='<div class="bracket-round">Best 3rd</div>'
-      tp.forEach(function(t){
-        var n=T[t]||'?',f=F[t]||''
-        tpCol+='<div class="bracket-match"><div class="team winner">'+f+' '+esc(n)+' 🔄</div></div>'
+    // Build the bracket structure - sections
+    var sections={
+      'S1':{groups:['A','B','C'],winners:[],runners:[],third:[]},
+      'S2':{groups:['D','E','F'],winners:[],runners:[],third:[]},
+      'S3':{groups:['G','H','I'],winners:[],runners:[],third:[]},
+      'S4':{groups:['J','K','L'],winners:[],runners:[],third:[]}
+    }
+    Object.keys(sections).forEach(function(s){
+      sections[s].groups.forEach(function(g){
+        if(cols[g]){sections[s].winners.push(cols[g].w);sections[s].runners.push(cols[g].r)}
       })
-      tpCol+='</div>'
-      bh+=tpCol
+    })
+    // Distribute third-place teams
+    var thirdPerSection=[[],[],[],[]]
+    tpList.forEach(function(t,i){thirdPerSection[i%4].push(+t)})
+    
+    // ---- Build the 4 bracket quadrants ----
+    function teamCell(tid,isWinner,score){
+      var n=T[tid]||'?',f=F[tid]||'',cls=isWinner?'winner':'loser'
+      return '<div class="team '+cls+'"><span class="name">'+f+' '+esc(n)+'</span>'+(score!=null?'<span class="score">'+score+'</span>':'')+'</div>'
     }
     
+    function matchCell(home,away,hScore,aScore,isFinished){
+      var hw=isFinished&&(hScore>aScore),aw=isFinished&&(aScore>hScore)
+      var hc=teamCell(home,hw,isFinished?hScore:null)
+      var ac=teamCell(away,aw,isFinished?aScore:null)
+      return '<div class="bracket-match">'+hc+ac+'</div>'
+    }
+    
+    bh+='<div class="bracket">'
+    
+    // Column 1: Round of 32 matches (8 per section × 4 sections)
+    var rd32='<div class="bracket-col"><div class="bracket-round">Round of 32</div>'
+    // Section 1: W(A) vs 3rd(S1-Ranked)
+    var s1w=sections['S1'].winners,s1r=sections['S1'].runners,t3=thirdPerSection[0]
+    for(var i=0;i<3;i++){
+      if(i<t3.length)rd32+=matchCell(s1w[i],t3[i],null,null,false)
+      if(i<3)rd32+=matchCell(s1r[2-i],s1w[2-i],null,null,false)
+    }
+    rd32+='</div>'
+    
+    // Column 2: Round of 16 (8 matches - winners of R32)
+    var rd16='<div class="bracket-col"><div class="bracket-round">Round of 16</div>'
+    var s2w=sections['S2'].winners,s2r=sections['S2'].runners,t4=thirdPerSection[1]
+    for(var i=0;i<3;i++){
+      if(i<t4.length)rd16+=matchCell(s2w[i],t4[i],null,null,false)
+      if(i<3)rd16+=matchCell(s2r[2-i],s2w[2-i],null,null,false)
+    }
+    rd16+='</div>'
+    
+    // Column 3: Quarter-finals (4 matches)
+    var qf='<div class="bracket-col"><div class="bracket-round">Quarter-Finals</div>'
+    var s3w=sections['S3'].winners,s3r=sections['S3'].runners,t5=thirdPerSection[2]
+    for(var i=0;i<3;i++){
+      if(i<t5.length)qf+=matchCell(s3w[i],t5[i],null,null,false)
+      if(i<3)qf+=matchCell(s3r[2-i],s3w[2-i],null,null,false)
+    }
+    qf+='</div>'
+    
+    // Column 4: Semi-finals (2 matches)
+    var sf='<div class="bracket-col"><div class="bracket-round">Semi-Finals</div>'
+    var s4w=sections['S4'].winners,s4r=sections['S4'].runners,t6=thirdPerSection[3]
+    for(var i=0;i<3;i++){
+      if(i<t6.length)sf+=matchCell(s4w[i],t6[i],null,null,false)
+      if(i<3)sf+=matchCell(s4r[2-i],s4w[2-i],null,null,false)
+    }
+    sf+='</div>'
+    
+    bh+=rd32+rd16+qf+sf
+    
+    // Column 5: Final
+    var fnl='<div class="bracket-col"><div class="bracket-round">🏆 Final</div>'
+    fnl+=matchCell(1,1,null,null,false)
+    fnl+='</div>'
+    bh+=fnl
+    
     bh+='</div>' // end bracket
+    
+    // Legend
+    bh+='<div style="font-size:10px;color:#666;text-align:center;margin-top:8px;">'
+    bh+='<span style="color:#ffd700;">■</span> Winner &nbsp; <span style="color:#666;">■</span> Runner-up &nbsp; <span style="color:#ffcc80;">🔄</span> Best 3rd'
+    bh+='</div>'
+    
   }else if(qids.length>=24){
     var tp=Object.keys(bt)
     bh+='<div style="color:#ffd700;font-size:18px;text-align:center;padding:20px;">🏆 '+qids.length+' Qualified</div>'
     bh+='<div style="text-align:center;color:#888;font-size:13px;">Waiting for remaining group matches</div>'
     
     // Show qualified teams by group
-    var glist=Object.keys(gq).sort()
+    var glist=Object.keys(gqObj).sort()
     glist.forEach(function(gr){
-      var w=gq[gr].q[0].id,rr=gq[gr].q[1].id,tid=gq[gr].t?gq[gr].t.id:null
+      var w=gqObj[gr].q[0].id,rr=gqObj[gr].q[1].id,tid=gqObj[gr].t?gqObj[gr].t.id:null
       var wn=T[w]||'?',rn=T[rr]||'?',wf=F[w]||'',rf=F[rr]||''
       var tn='',tf=''
       if(tid&&bt[tid]){tn=T[tid]||'?';tf=F[tid]||''}
@@ -198,8 +253,8 @@ function render(games){
 
   // ---- GROUPS TAB ----
   var gh='<div class="groups-grid">'
-  Object.keys(gq).sort().forEach(function(gr){
-    var info=gq[gr],rows=''
+  Object.keys(gqObj).sort().forEach(function(gr){
+    var info=gqObj[gr],rows=''
     info.all.forEach(function(item,i){
       var r=i+1,t=item.id,s=item.s,n=T[t]||'?',f=F[t]||'',q=r<=2||bt[t],tb=bt[t]&&r>2,cls=''
       if(q&&r<=2)cls=' style="background:#0d3320;"'
@@ -217,10 +272,10 @@ function render(games){
 
   // ---- STANDINGS TAB ----
   var allT=[]
-  Object.keys(gq).sort().forEach(function(gr){
+  Object.keys(gqObj).sort().forEach(function(gr){
     Object.keys(st[gr]).forEach(function(tid){
       var t=+tid,s=st[gr][t],pos=1
-      gq[gr].all.some(function(item,i){if(item.id==t){pos=i+1;return true}})
+      gqObj[gr].all.some(function(item,i){if(item.id==t){pos=i+1;return true}})
       var sts='grp';if(pos<=2)sts='q';else if(bt[t])sts='t';else if(s.pld==3)sts='o'
       allT.push({pts:s.pts,gd:s.gd,gf:s.gf,gr:gr,t:t,n:T[t]||'?',f:F[t]||'',s:s,p:pos,sts:sts})
     })
