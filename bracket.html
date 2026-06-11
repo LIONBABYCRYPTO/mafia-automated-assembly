@@ -20,6 +20,22 @@ body{font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,Roboto,sans-serif;b
 .bw::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,#ffd70022,transparent)}
 #bracket{min-width:750px;height:100%}
 
+/* Groups column — inside the bracket flow as the first "column" */
+.groups-col{display:inline-flex;flex-direction:column;gap:2px;padding:28px 6px 0 4px;vertical-align:top;min-width:110px;flex-shrink:0}
+.gb{background:#0e0e1a;border:1px solid #1a1a2e;border-radius:5px;padding:3px 5px}
+.gb .gl{font-size:9px;font-weight:700;color:#ffd700;letter-spacing:.5px;border-bottom:1px solid #1a1a2e;padding-bottom:1px;margin-bottom:1px;text-align:center}
+.gb .gt{font-size:9px;line-height:1.5}
+.gb .gt .r{display:flex;justify-content:space-between;padding:0 1px;align-items:center}
+.gb .gt .r .fl{font-size:10px}
+.gb .gt .r .nm{flex:1;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-left:2px;font-size:8px}
+.gb .gt .r .pt{min-width:12px;text-align:right;font-weight:600;font-size:8px}
+.gb .gt .r.q .nm{color:#a5d6a7;font-weight:600}
+.gb .gt .r.q .pt{color:#a5d6a7}
+.gb .gt .r.b .nm{color:#ffcc80}
+.gb .gt .r.b .pt{color:#ffcc80}
+.gb .gt .r.o .nm{color:#555}
+.gb .gt .r.o .pt{color:#555}
+
 .ft{flex-shrink:0;text-align:center;font-size:9px;color:#444;margin-top:6px;padding-top:4px;border-top:1px solid #141414}
 .ft .b{display:inline;margin:0 4px}
 .ft .d{display:inline-block;width:4px;height:4px;border-radius:50%;margin-right:2px;vertical-align:middle}
@@ -34,7 +50,7 @@ body{font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,Roboto,sans-serif;b
 .loading .s{width:26px;height:26px;border:2px solid #1a1a2e;border-top:2px solid #ffd700;border-radius:50%;animation:sp .8s linear infinite}
 @keyframes sp{to{transform:rotate(360deg)}}
 
-@media print{body{background:#fff}.bw{background:#fff;border-color:#ccc}.bw::before{display:none}.hd h1{-webkit-text-fill-color:#b8860f;color:#b8860f}}
+@media print{body{background:#fff}.bw{background:#fff;border-color:#ccc}.bw::before{display:none}.hd h1{-webkit-text-fill-color:#b8860f;color:#b8860f}.gb{background:#f8f9fa;border-color:#ddd}}
 </style>
 </head>
 <body>
@@ -78,17 +94,15 @@ async function build(){
   tp.sort((a,b)=>b.s.pt-a.s.pt||b.s.gd-a.s.gd||b.s.gf-a.s.gf)
   const bt={};tp.slice(0,8).forEach(t=>{bt[t.t]=true})
 
-  // ─── MAP GROUP TO TEAM ───
-  // For each team ID, find their group and rank (1=winner, 2=runner-up, 3=third)
+  // ─── TEAM GROUP INFO ───
   const teamGroup={}
   Object.keys(q).forEach(k=>{
-    const info=q[k]
-    info.x.forEach((t,i)=>{
-      teamGroup[t.id]={group:k,rank:i+1,pts:t.s.pt,status:i==0?'W':i==1?'RU':bt[t.id]?'3rd':''}
+    q[k].x.forEach((t,i)=>{
+      teamGroup[t.id]={group:k,rank:i+1,status:i==0?'W':i==1?'RU':bt[t.id]?'3rd':''}
     })
   })
 
-  // ─── MATCH SCORE LOOKUP ───
+  // ─── SCORE LOOKUP ───
   const scores={}
   gm.forEach(g=>{
     if(g.finished!='TRUE')return
@@ -122,7 +136,7 @@ async function build(){
     [sn.S4.w[2],tp3[3][2]||0],[sn.S4.r[0],sn.S4.w[0]]
   ]
 
-  // ─── BUILD MATCHES ───
+  // ─── MATCHES ───
   const matches=[]
   r32p.forEach((p,i)=>{
     const h=p[0],a=p[1]
@@ -131,21 +145,17 @@ async function build(){
     const fn=!!sc
     const hs=fn?sc[2]:null,as=fn?sc[3]:null
     const tg=teamGroup[h]||{},ag=teamGroup[a]||{}
-    // Team title includes group info: "A1" for group winner, "B2" for runner-up, "C3rd" for best 3rd
     const hLabel=tg.status? tg.group + (tg.status=='W'?'1':tg.status=='RU'?'2':tg.status):''
     const aLabel=ag.status? ag.group + (ag.status=='W'?'1':ag.status=='RU'?'2':ag.status):''
-    const hTitle=hLabel ? Fl[h]+' '+T[h]+' <span style="color:#888;font-size:9px">('+hLabel+')</span>' : Fl[h]+' '+T[h]
-    const aTitle=aLabel ? Fl[a]+' '+T[a]+' <span style="color:#888;font-size:9px">('+aLabel+')</span>' : Fl[a]+' '+T[a]
     matches.push({
       roundIndex:0,order:i,
       sides:[
-        {title:hTitle,contestantId:String(h),scores:fn?[{mainScore:hs}]:[],isWinner:fn&&hs!==null&&as!==null&&hs>as},
-        {title:aTitle,scores:fn?[{mainScore:as}]:[],isWinner:fn&&as!==null&&hs!==null&&as>hs}
+        {title:Fl[h]+' '+T[h]+' <span style="color:#888;font-size:9px">('+hLabel+')</span>',contestantId:String(h),scores:fn?[{mainScore:hs}]:[],isWinner:fn&&hs!==null&&as!==null&&hs>as},
+        {title:Fl[a]+' '+T[a]+' <span style="color:#888;font-size:9px">('+aLabel+')</span>',scores:fn?[{mainScore:as}]:[],isWinner:fn&&as!==null&&hs!==null&&as>hs}
       ]
     })
   })
 
-  // Placeholder rounds
   for(let r=1;r<5;r++){
     const cnt=Math.pow(2,4-r)
     for(let m=0;m<cnt;m++){
@@ -153,7 +163,21 @@ async function build(){
     }
   }
 
-  const data={rounds:[{name:'ROUND OF 32'},{name:'ROUND OF 16'},{name:'QUARTER-FINALS'},{name:'SEMI-FINALS'},{name:'🏆 FINAL'}],matches}
+  const data={rounds:[{name:'GROUPS'},{name:'R32'},{name:'R16'},{name:'QF'},{name:'SF'},{name:'🏆 FINAL'}],matches}
+
+  // ─── GROUPS COLUMN HTML ───
+  let gcol='<div class="groups-col" style="display:inline-flex">'
+  Object.keys(q).sort().forEach(k=>{
+    const info=q[k]
+    gcol+='<div class="gb"><div class="gl">'+es(k)+'</div><div class="gt">'
+    info.x.forEach((t,i)=>{
+      const r=i+1,qd=r<=2||bt[t.id],tb=bt[t.id]&&r>2
+      const cls=qd&&r<=2?'q':tb?'b':t.s.p==3?'o':''
+      gcol+='<div class="r '+cls+'"><span class="fl">'+(Fl[t.id]||'')+'</span><span class="nm">'+es(T[t.id]||'?')+'</span><span class="pt">'+t.s.pt+'</span></div>'
+    })
+    gcol+='</div></div>'
+  })
+  gcol+='</div>'
 
   // ─── RENDER ───
   const lc=gm.filter(g=>{const e=g.time_elapsed;return e&&e!='notstarted'&&e!='finished'&&g.finished!='TRUE'}).length
@@ -161,7 +185,7 @@ async function build(){
   const full=qn>=32
 
   const app=document.getElementById('app')
-  app.innerHTML='<div class="app"><div class="hd"><h1>🏆 WORLD CUP 2026</h1><div class="sub">United States · Canada · Mexico</div><div class="div"></div><div class="info">'+(lc?'<span class="ld"></span> ':'')+gm.length+' matches · '+(full?qn+' qualified':qn+' of 32')+'</div></div><div class="bw"><div id="bracket"></div></div><div class="ft"><span class="b"><span class="d g"></span>Adv</span><span class="b"><span class="d y"></span>3rd</span><span class="b"><span class="d gr"></span>Out</span></div></div>'
+  app.innerHTML='<div class="app"><div class="hd"><h1>🏆 WORLD CUP 2026</h1><div class="sub">United States · Canada · Mexico</div><div class="div"></div><div class="info">'+(lc?'<span class="ld"></span> ':'')+gm.length+' matches · '+(full?qn+' qualified':qn+' of 32')+'</div></div><div class="bw"><div id="bracket" style="white-space:nowrap">'+gcol+'</div></div><div class="ft"><span class="b"><span class="d g"></span>Adv</span><span class="b"><span class="d y"></span>3rd</span><span class="b"><span class="d gr"></span>Out</span></div></div>'
 
   createBracket(data,document.getElementById('bracket'),{
     navButtonsPosition:'overMatches',
@@ -186,9 +210,7 @@ async function build(){
     getScoresHTML(side){
       if(side.scores&&side.scores.length>0){
         const v=side.scores[0].mainScore
-        if(v!==null&&v!==undefined){
-          return `<span style="font-weight:700;font-size:13px;color:#ffd700">${v}</span>`
-        }
+        if(v!==null&&v!==undefined)return `<span style="font-weight:700;font-size:13px;color:#ffd700">${v}</span>`
       }
       return''
     },
