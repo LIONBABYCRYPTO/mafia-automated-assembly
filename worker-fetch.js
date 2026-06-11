@@ -67,16 +67,15 @@ async function handleRequest(request) {
       const state = JSON.parse(raw);
       const now = Date.now();
 
-      // Piggyback heartbeat: if player_id param provided, update lastHeartbeat and persist
+      // Piggyback heartbeat: update in-memory only, no KV write (loss-tolerant)
       const playerId = url.searchParams.get('player_id');
       if (playerId) {
         const player = state.players.find(p => p.id === Number(playerId));
         if (player) {
-          player.lastHeartbeat = now;
+          player.lastHeartbeat = Date.now();
           player.online = true;
-          // Write back without CAS (KV get/put is eventually consistent,
-          // heartbeat is loss-tolerant — stale heartbeat is fine)
-          await GAME_KV.put(`room:${code}`, JSON.stringify(state));
+          // No KV write — heartbeat is loss-tolerant, stale timestamp is harmless.
+          // This saves ~2,500 KV writes per game (10 players × 3.5s × 15min).
         }
       }
 
@@ -435,13 +434,9 @@ async function handleRequest(request) {
     }
 
     // POST /api/heartbeat
+    // POST /api/heartbeat — no KV write, use snapshot poll heartbeat instead
     if (path === '/api/heartbeat' && method === 'POST') {
-      return await withRoom(body => {
-        const state = body._state;
-        const player = state.players.find(p => p.id === body.player_id);
-        if (player) { player.lastHeartbeat = Date.now(); player.online = true; }
-        return { success: true };
-      }, request, origin);
+      return json({ success: true }, 200, origin);
     }
 
     // POST /api/check-ghosts
