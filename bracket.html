@@ -20,12 +20,11 @@ body{font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,Roboto,sans-serif;b
 .bw-wrap{flex:1;display:flex;gap:0;min-height:0;overflow:hidden;border:1px solid #1a1a2e;border-radius:8px;background:linear-gradient(180deg,#0e0e1a,#090912);position:relative}
 .bw-wrap::before{content:'';position:absolute;top:0;left:0;height:1.5px;background:linear-gradient(90deg,transparent,#ffd70022,transparent);z-index:2}
 
-/* Groups column - stretched to match bracket height */
+/* Groups column */
 .groups-col{width:110px;flex-shrink:0;overflow-y:auto;padding:0 4px 4px;border-right:1px solid #1a1a2e;display:flex;flex-direction:column;gap:2px}
 .groups-col .gc-hdr{text-align:center;font-size:8px;text-transform:uppercase;letter-spacing:1.5px;font-weight:700;color:#555;padding:5px 2px;border-bottom:1px solid #1a1a2e;line-height:1;flex-shrink:0}
-/* Spread group blocks vertically to fill available height */
 .gc-body{flex:1;display:flex;flex-direction:column;gap:2px;padding-top:1px}
-.gc-body .gb{background:#0e0e1a;border:1px solid #1a1a2e;border-radius:4px;padding:2px 3px;flex:1;display:flex;flex-direction:column;justify-content:center}
+.gc-body .gb{background:#0e0e1a;border:1px solid #1a1a2e;border-radius:4px;padding:2px 3px;flex:1;display:flex;flex-direction:column;justify-content:center;position:relative}
 .gb .gl{font-size:7px;font-weight:700;color:#ffd700;letter-spacing:.3px;border-bottom:1px solid #1a1a2e;padding-bottom:1px;margin-bottom:1px;text-align:center}
 .gb .gt{font-size:7px;line-height:1.4}
 .gb .gt .r{display:flex;justify-content:space-between;padding:0 1px;align-items:center;gap:1px}
@@ -39,7 +38,18 @@ body{font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,Roboto,sans-serif;b
 .gb .gt .r.o .nm{color:#555}
 .gb .gt .r.o .pt{color:#555}
 
-/* Bracket area - horizontally scrollable */
+/* Round-robin mini-tree inside each group */
+.gr-tt{margin:0 -1px;padding:1px 0}
+.gr-m{display:flex;align-items:center;gap:1px;font-size:6px;line-height:1;padding:0 1px;justify-content:space-between}
+.gr-m .fh{flex-shrink:0;font-size:6px}
+.gr-m .fa{flex-shrink:0;font-size:6px}
+.gr-m .fs{color:#ffd700;font-weight:700;font-size:6px;min-width:8px;text-align:center}
+.gr-m .vs{color:#555;font-size:5px;margin:0 1px}
+.gr-m .fn{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:6px;flex:1}
+.gr-m.f{opacity:0.6}
+.gr-m.nf{opacity:0.25}
+
+/* Bracket area */
 .bw{flex:1;overflow-x:auto;overflow-y:hidden;min-width:0;padding:4px}
 #bracket{min-width:580px;height:100%}
 
@@ -57,7 +67,6 @@ body{font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,Roboto,sans-serif;b
 .loading .s{width:22px;height:22px;border:2px solid #1a1a2e;border-top:2px solid #ffd700;border-radius:50%;animation:sp .8s linear infinite}
 @keyframes sp{to{transform:rotate(360deg)}}
 
-/* Bracketry overrides */
 .bracket-root{--matchFontSize:9px!important;--roundTitlesFontSize:8px!important;--matchMaxWidth:170px!important;--matchMinVerticalGap:8px!important;--matchHorMargin:8px!important}
 .bracket-root .round-wrapper{min-width:130px}
 
@@ -70,6 +79,11 @@ body{font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,Roboto,sans-serif;b
 .gb .gt .r .nm{font-size:8px}
 .gb .gt .r .fl{font-size:9px}
 .gb .gt .r .pt{font-size:8px}
+.gr-m{font-size:7px}
+.gr-m .fh,.gr-m .fa{font-size:7px}
+.gr-m .fn{font-size:7px}
+.gr-m .fs{font-size:7px}
+.gr-m .vs{font-size:6px}
 #bracket{min-width:750px}
 .bracket-root{--matchFontSize:11px!important;--roundTitlesFontSize:10px!important;--matchMaxWidth:220px!important;--matchMinVerticalGap:14px!important;--matchHorMargin:12px!important}
 .gc-body .gb{padding:4px 5px}
@@ -97,19 +111,17 @@ async function build(){
   const gm=json.games||[]
 
   const st={}
-  const groupMatchCount={}
-  Object.keys(Gr).forEach(k=>{st[k]={};groupMatchCount[k]=0;Gr[k].forEach(t=>{st[k][t]={p:0,w:0,d:0,l:0,gf:0,ga:0,gd:0,pt:0}})})
+  const groupGames={}
+  Object.keys(Gr).forEach(k=>{st[k]={};groupGames[k]=[];Gr[k].forEach(t=>{st[k][t]={p:0,w:0,d:0,l:0,gf:0,ga:0,gd:0,pt:0}})})
   gm.forEach(g=>{
     const gr=g.group;if(!st[gr])return
-    groupMatchCount[gr]++
+    groupGames[gr].push(g)
     if(g.finished!='TRUE')return
     const ht=+g.home_team_id,at=+g.away_team_id,hs=+g.home_score||0,as=+g.away_score||0
     function u(tid,sc,co){const s=st[gr][tid];if(!s)return;s.p++;s.gf+=sc;s.ga+=co;s.gd+=sc-co;if(sc>co){s.w++;s.pt+=3}else if(sc==co){s.d++;s.pt+=1}else{s.l++}}
     u(ht,hs,as);u(at,as,hs)
   })
 
-  // Check if all 12 groups are confirmed (each group has 6 matches played = finished)
-  // A group is confirmed when all 6 games (4 teams, round-robin) are finished
   let allGroupsConfirmed = true
   Object.keys(Gr).forEach(k=>{
     const finishedInGroup = gm.filter(g=>g.group===k&&g.finished==='TRUE').length
@@ -140,17 +152,41 @@ async function build(){
     return scores[[Math.min(ta,tb),Math.max(ta,tb)].join('-')]||null
   }
 
-  // Groups column HTML — stretched to fill height with flex:1
+  function getRRMatchHtml(grp, gid1, gid2){
+    const tid1 = Gr[grp][gid1], tid2 = Gr[grp][gid2]
+    const sc = getScore(tid1, tid2)
+    const fn = !!sc
+    const nm1 = T[tid1]||'?', nm2 = T[tid2]||'?'
+    const fl1 = Fl[tid1]||'', fl2 = Fl[tid2]||''
+    const cls = fn?'f':'nf'
+    const scoreStr = fn?`<span class="fs">${sc[2]}-${sc[3]}</span>`:'<span class="vs">vs</span>'
+    // Shorten names for tight space
+    const sn1 = nm1.length>5?nm1.substring(0,4)+'…':nm1
+    const sn2 = nm2.length>5?nm2.substring(0,4)+'…':nm2
+    return `<div class="gr-m ${cls}"><span class="fh">${fl1}</span><span class="fn">${es(sn1)}</span>${scoreStr}<span class="fn" style="text-align:right">${es(sn2)}</span><span class="fa">${fl2}</span></div>`
+  }
+
+  // Groups column HTML with round-robin mini-trees
   let gcol='<div class="groups-col"><div class="gc-hdr">GROUPS</div><div class="gc-body">'
   Object.keys(q).sort().forEach(k=>{
     const info=q[k]
-    gcol+='<div class="gb"><div class="gl">'+es(k)+'</div><div class="gt">'
+    // Standings rows
+    let stRows=''
     info.x.forEach((t,i)=>{
       const r=i+1,qd=r<=2||bt[t.id],tb=bt[t.id]&&r>2
       const cls=qd&&r<=2?'q':tb?'b':t.s.p==3?'o':''
-      gcol+='<div class="r '+cls+'"><span class="fl">'+(Fl[t.id]||'')+'</span><span class="nm">'+es(T[t.id]||'?')+'</span><span class="pt">'+t.s.pt+'</span></div>'
+      stRows+='<div class="r '+cls+'"><span class="fl">'+(Fl[t.id]||'')+'</span><span class="nm">'+es(T[t.id]||'?')+'</span><span class="pt">'+t.s.pt+'</span></div>'
     })
-    gcol+='</div></div>'
+    // Round-robin matchups (6 games: team0 vs team1,0vs2,0vs3,1vs2,1vs3,2vs3)
+    let rrHtml='<div class="gr-tt">'
+    rrHtml+=getRRMatchHtml(k,0,1)
+    rrHtml+=getRRMatchHtml(k,0,2)
+    rrHtml+=getRRMatchHtml(k,0,3)
+    rrHtml+=getRRMatchHtml(k,1,2)
+    rrHtml+=getRRMatchHtml(k,1,3)
+    rrHtml+=getRRMatchHtml(k,2,3)
+    rrHtml+='</div>'
+    gcol+='<div class="gb"><div class="gl">'+es(k)+'</div><div class="gt">'+stRows+'</div>'+rrHtml+'</div>'
   })
   gcol+='</div></div>'
 
@@ -160,7 +196,6 @@ async function build(){
   let appHtml='<div class="app"><div class="hd"><h1>🏆 WORLD CUP 2026</h1><div class="sub">United States · Canada · Mexico</div><div class="div"></div><div class="info">'+(lc?'<span class="ld"></span> ':'')+gm.length+' matches</div></div><div class="bw-wrap">'+gcol
 
   if(allGroupsConfirmed){
-    // Build bracket data
     const sn={S1:{w:[],r:[]},S2:{w:[],r:[]},S3:{w:[],r:[]},S4:{w:[],r:[]}}
     Object.keys(sn).forEach(s=>{Sec[s].g.forEach(k=>{if(q[k]){sn[s].w.push(q[k].w.id);sn[s].r.push(q[k].r.id)}})})
     const tp3=[[],[],[],[]]
@@ -248,7 +283,6 @@ async function build(){
       roundTitlesVerticalPadding:4
     })
   } else {
-    // Groups only — no bracket until groups are confirmed
     const finishedGroups = Object.keys(Gr).filter(k=>{
       return gm.filter(g=>g.group===k&&g.finished==='TRUE').length >= 6
     }).length
