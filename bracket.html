@@ -163,10 +163,10 @@ async function build(){
     }
   }
 
-  const data={rounds:[{name:'GROUPS'},{name:'R32'},{name:'R16'},{name:'QF'},{name:'SF'},{name:'🏆 FINAL'}],matches}
+  const data={rounds:[{name:'R32'},{name:'R16'},{name:'QF'},{name:'SF'},{name:'🏆 FINAL'}],matches}
 
   // ─── GROUPS COLUMN HTML ───
-  let gcol='<div class="groups-col" style="display:inline-flex">'
+  let gcol='<div class="groups-col" style="display:inline-flex"><div style="text-align:center;font-size:9px;text-transform:uppercase;letter-spacing:1.5px;font-weight:700;color:#555;margin-bottom:2px">GROUPS</div>'
   Object.keys(q).sort().forEach(k=>{
     const info=q[k]
     gcol+='<div class="gb"><div class="gl">'+es(k)+'</div><div class="gt">'
