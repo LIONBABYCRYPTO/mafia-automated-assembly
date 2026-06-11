@@ -32,6 +32,13 @@ async function handleRequest(request) {
   try {
     const path = url.pathname;
 
+    // WC Proxy: /api/wc — proxies worldcup26.ir with CORS headers
+    if (path === '/api/wc' && method === 'GET') {
+      const wcResp = await fetch('https://worldcup26.ir/get/games');
+      const wcData = await wcResp.json();
+      return json(wcData, 200, origin);
+    }
+
     // POST /api/rooms
     if (path === '/api/rooms' && method === 'POST') {
       const body = await request.json();
