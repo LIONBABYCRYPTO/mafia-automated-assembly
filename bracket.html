@@ -7,109 +7,104 @@
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%}
-body{font-family:Inter,'Segoe UI',-apple-system,BlinkMacSystemFont,sans-serif;background:#0B1020;color:#e0e0e0;overflow-x:hidden}
-.app{max-width:1600px;margin:0 auto;padding:10px;min-height:100vh;display:flex;flex-direction:column}
+body{font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,Roboto,sans-serif;background:#0b0b14;color:#e0e0e0;overflow-x:hidden}
+.app{max-width:1600px;margin:0 auto;padding:12px 12px 10px;min-height:100vh;display:flex;flex-direction:column}
 
 /* Stats bar */
 .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(80px,1fr));gap:6px;margin-bottom:8px;flex-shrink:0}
 .st-card{background:#121A2F;border:1px solid #1a2a4e;border-radius:10px;padding:6px 8px;text-align:center}
-.st-card .st-v{font-size:16px;font-weight:700;color:#FFD166}
+.st-card .st-v{font-size:16px;font-weight:700;color:#ffd700}
 .st-card .st-l{font-size:8px;color:#666;text-transform:uppercase;letter-spacing:.5px;margin-top:1px}
 
-/* Header */
 .hd{text-align:center;margin-bottom:6px;flex-shrink:0}
-.hd h1{font-size:22px;font-weight:800;background:linear-gradient(135deg,#FFD166,#f5a623 60%,#ff6b35);-webkit-background-clip:text;-webkit-text-fill-color:transparent;letter-spacing:1px;line-height:1.2}
-.hd .sub{font-size:8px;color:#555;letter-spacing:1.5px;text-transform:uppercase}
+.hd h1{font-size:26px;font-weight:800;background:linear-gradient(135deg,#ffd700,#f5a623 60%,#ff6b35);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;letter-spacing:1px;line-height:1.2}
+.hd .sub{font-size:10px;color:#555;letter-spacing:1.5px;text-transform:uppercase}
+.hd .div{width:30px;height:1.5px;background:linear-gradient(90deg,transparent,#ffd70044,transparent);margin:3px auto}
+.hd .info{font-size:11px;color:#666}
 
-/* Team search */
-.search-wrap{position:relative;margin-bottom:6px;flex-shrink:0}
-.search-wrap input{width:100%;padding:8px 12px;border-radius:10px;border:1px solid #1a2a4e;background:#121A2F;color:#e0e0e0;font-size:13px;outline:none}
-.search-wrap input:focus{border-color:#4CC9F0}
-.search-wrap input::placeholder{color:#444}
+.bw-wrap{flex:1;display:flex;gap:0;min-height:0;overflow:hidden;border:1px solid #1a1a2e;border-radius:8px;background:linear-gradient(180deg,#0e0e1a,#090912);position:relative}
+.bw-wrap::before{content:'';position:absolute;top:0;left:0;height:1.5px;background:linear-gradient(90deg,transparent,#ffd70022,transparent);z-index:2}
 
-.bw-wrap{flex:1;display:flex;min-height:0;overflow:hidden;border:1px solid #1a2a4e;border-radius:10px;background:linear-gradient(180deg,#0B1020,#080c18)}
-
-/* Groups sidebar */
-.groups-col{width:100px;flex-shrink:0;overflow-y:auto;padding:0 4px 4px;border-right:1px solid #1a2a4e;display:flex;flex-direction:column;gap:2px}
-.groups-col .gc-hdr{text-align:center;font-size:8px;text-transform:uppercase;letter-spacing:1.5px;font-weight:700;color:#555;padding:5px 2px;border-bottom:1px solid #1a2a4e;line-height:1;flex-shrink:0}
-.gc-body{flex:1;display:flex;flex-direction:column;gap:2px}
-.gc-body .gb{background:#121A2F;border:1px solid #1a2a4e;border-radius:6px;padding:2px 3px;flex:1;display:flex;flex-direction:column;justify-content:center}
-.gb .gl{font-size:7px;font-weight:700;color:#FFD166;letter-spacing:.3px;border-bottom:1px solid #1a2a4e;padding-bottom:1px;margin-bottom:1px;text-align:center}
-.gb .gt{font-size:7px;line-height:1.4}
-.gb .gt .r{display:flex;justify-content:space-between;padding:0 1px;align-items:center;gap:1px}
-.gb .gt .r .fl{font-size:7px;flex-shrink:0}
-.gb .gt .r .nm{flex:1;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:7px;color:#e0e0e0}
-.gb .gt .r .pt{min-width:10px;text-align:right;font-weight:600;font-size:7px}
-.gb .gt .r.q .nm{color:#22C55E;font-weight:600}
-.gb .gt .r.q .pt{color:#22C55E}
-.gb .gt .r.b .nm{color:#FFD166}
-.gb .gt .r.b .pt{color:#FFD166}
+/* Groups column */
+.groups-col{width:120px;flex-shrink:0;overflow-y:auto;padding:0 6px 6px;border-right:1px solid #1a1a2e;display:flex;flex-direction:column;gap:3px}
+.groups-col .gc-hdr{text-align:center;font-size:10px;text-transform:uppercase;letter-spacing:1.5px;font-weight:700;color:#555;padding:6px 2px;border-bottom:1px solid #1a1a2e;line-height:1;flex-shrink:0}
+.gc-body{flex:1;display:flex;flex-direction:column;gap:3px;padding-top:1px}
+.gc-body .gb{background:#0e0e1a;border:1px solid #1a1a2e;border-radius:4px;padding:3px 4px;flex:1;display:flex;flex-direction:column;justify-content:center}
+.gb .gl{font-size:9px;font-weight:700;color:#ffd700;letter-spacing:.3px;border-bottom:1px solid #1a1a2e;padding-bottom:1px;margin-bottom:2px;text-align:center}
+.gb .gt{font-size:9px;line-height:1.5}
+.gb .gt .r{display:flex;justify-content:space-between;padding:1px 1px;align-items:center;gap:2px}
+.gb .gt .r .fl{font-size:10px;flex-shrink:0}
+.gb .gt .r .nm{flex:1;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:9px}
+.gb .gt .r .pt{min-width:12px;text-align:right;font-weight:600;font-size:9px}
+.gb .gt .r.q .nm{color:#a5d6a7;font-weight:600}
+.gb .gt .r.q .pt{color:#a5d6a7}
+.gb .gt .r.b .nm{color:#ffcc80}
+.gb .gt .r.b .pt{color:#ffcc80}
 .gb .gt .r.o .nm{color:#555}
 .gb .gt .r.o .pt{color:#555}
 
-/* Bracket scroll area */
-.bw{flex:1;overflow-x:auto;overflow-y:hidden;min-width:0;padding:4px;scroll-behavior:smooth;scroll-snap-type:x proximity}
-#bracket{min-width:420px;height:100%}
+/* Bracket area */
+.bw{flex:1;overflow-x:auto;overflow-y:hidden;min-width:0;padding:4px;scroll-behavior:smooth}
+#bracket{min-width:580px;height:100%}
 
-/* Group stage column */
-.grp-round{display:inline-block;vertical-align:top;width:200px;height:100%;overflow-y:auto;padding:1px;flex-shrink:0;scroll-snap-align:start}
-.grp-round .grp-title{text-align:center;font-size:10px;text-transform:uppercase;letter-spacing:1px;font-weight:700;color:#555;padding:4px 2px;border-bottom:1px solid #1a2a4e;margin-bottom:2px}
-.grp-block{border:1px solid #1a2a4e;border-radius:6px;margin-bottom:1px;background:#121A2F}
-.grp-block .gl{font-size:10px;font-weight:700;color:#FFD166;padding:2px 5px;border-bottom:1px solid #1a2a4e;text-align:center}
-.grp-m{display:flex;align-items:center;gap:1px;font-size:11px;padding:1px 5px;justify-content:space-between;line-height:1.4;border-radius:4px;transition:background .15s}
-.grp-m .fh{flex-shrink:0;font-size:10px}
-.grp-m .fa{flex-shrink:0;font-size:10px}
-.grp-m .fs{color:#FFD166;font-weight:700;font-size:11px;min-width:16px;text-align:center}
-.grp-m .vs{color:#555;font-size:9px}
-.grp-m .fn{font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+/* Group round column */
+.grp-round{display:inline-block;vertical-align:top;width:240px;height:100%;overflow-y:auto;padding:1px;flex-shrink:0}
+.grp-round .grp-title{text-align:center;font-size:13px;text-transform:uppercase;letter-spacing:1.5px;font-weight:700;color:#555;padding:4px 2px;border-bottom:1px solid #1a1a2e;line-height:1;margin-bottom:2px}
+.grp-block{border:1px solid #1a1a2e;border-radius:4px;margin-bottom:1px;background:#0e0e1a}
+.grp-block .gl{font-size:13px;font-weight:700;color:#ffd700;letter-spacing:.3px;padding:2px 5px;border-bottom:1px solid #1a1a2e;text-align:center}
+.grp-m{display:flex;align-items:center;gap:1px;font-size:14px;padding:1px 6px;justify-content:space-between;line-height:1.3}
+.grp-m .fh{flex-shrink:0;font-size:13px}
+.grp-m .fa{flex-shrink:0;font-size:13px}
+.grp-m .fs{color:#ffd700;font-weight:700;font-size:14px;min-width:18px;text-align:center}
+.grp-m .vs{color:#555;font-size:11px;margin:0 1px}
+.grp-m .fn{font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
 .grp-m.f{opacity:0.6}
 .grp-m.nf{opacity:0.3}
-.grp-m.highlight{background:#1a2a5e}
-.grp-m.dim{opacity:0.15}
 
 .bracket-rows{display:flex;height:100%;align-items:flex-start;gap:0}
 
-/* Legend */
-.ft{flex-shrink:0;text-align:center;font-size:8px;color:#444;margin-top:4px;padding-top:2px;border-top:1px solid #141414}
-.ft .b{display:inline;margin:0 3px}
-.ft .d{display:inline-block;width:3px;height:3px;border-radius:50%;margin-right:2px;vertical-align:middle}
-.ft .d.g{background:#22C55E}
-.ft .d.y{background:#FFD166}
+.ft{flex-shrink:0;text-align:center;font-size:10px;color:#444;margin-top:5px;padding-top:3px;border-top:1px solid #141414}
+.ft .b{display:inline;margin:0 4px}
+.ft .d{display:inline-block;width:4px;height:4px;border-radius:50%;margin-right:2px;vertical-align:middle}
+.ft .d.g{background:#a5d6a7}
+.ft .d.y{background:#ffcc80}
 .ft .d.gr{background:#555}
 
-.ld, .live-dot{display:inline-block;width:5px;height:5px;border-radius:50%;background:#EF4444;animation:bl 1s ease-in-out infinite;margin-right:2px;vertical-align:middle}
+.ld{display:inline-block;width:5px;height:5px;border-radius:50%;background:#4caf50;animation:bl 1.5s ease-in-out infinite;margin-right:2px;vertical-align:middle}
 @keyframes bl{0%{opacity:1}50%{opacity:0.2}100%{opacity:1}}
 
 .loading{display:flex;align-items:center;justify-content:center;height:50vh;color:#555;gap:8px;flex-direction:column}
-.loading .s{width:22px;height:22px;border:2px solid #1a2a4e;border-top:2px solid #FFD166;border-radius:50%;animation:sp .8s linear infinite}
+.loading .s{width:22px;height:22px;border:2px solid #1a1a2e;border-top:2px solid #ffd700;border-radius:50%;animation:sp .8s linear infinite}
 @keyframes sp{to{transform:rotate(360deg)}}
 
-/* Bracketry */
-.bracket-root{--matchFontSize:11px!important;--roundTitlesFontSize:10px!important;--matchMaxWidth:170px!important;--matchMinVerticalGap:8px!important;--matchHorMargin:8px!important}
+.bracket-root{--matchFontSize:14px!important;--roundTitlesFontSize:12px!important;--matchMaxWidth:210px!important;--matchMinVerticalGap:14px!important;--matchHorMargin:14px!important}
+.bracket-root .round-wrapper{min-width:130px}
 
-/* Desktop */
 @media(min-width:768px){
-.groups-col{width:120px;padding:0 6px 6px}
-.groups-col .gc-hdr{font-size:9px}
+.groups-col{width:130px;padding:0 6px 6px}
+.groups-col .gc-hdr{font-size:9px;padding:6px 2px}
 .gb{padding:3px 4px}
 .gb .gl{font-size:8px}
-.gb .gt{font-size:8px}
+.gb .gt{font-size:8px;line-height:1.5}
+.gb .gt .r .nm{font-size:8px}
+.gb .gt .r .fl{font-size:9px}
+.gb .gt .r .pt{font-size:8px}
 .grp-round{width:240px}
-.grp-m{font-size:13px;padding:2px 8px}
+.grp-m{font-size:13px;padding:3px 8px}
 .grp-m .fh,.grp-m .fa{font-size:12px}
 .grp-m .fn{font-size:13px}
 .grp-m .fs{font-size:13px}
-#bracket{min-width:600px}
-.bracket-root{--matchFontSize:14px!important;--roundTitlesFontSize:12px!important;--matchMaxWidth:240px!important;--matchMinVerticalGap:14px!important;--matchHorMargin:14px!important}
+.grp-m .vs{font-size:11px}
+#bracket{min-width:750px}
+.bracket-root{--matchFontSize:16px!important;--roundTitlesFontSize:14px!important;--matchMaxWidth:260px!important;--matchMinVerticalGap:18px!important;--matchHorMargin:16px!important}
+.gc-body .gb{padding:5px 6px}
 .stats{grid-template-columns:repeat(5,1fr)}
 .st-card{padding:10px 12px}
 .st-card .st-v{font-size:22px}
 .st-card .st-l{font-size:10px}
-.hd h1{font-size:28px}
-.search-wrap input{font-size:14px;padding:10px 14px}
 }
 
-@media print{body{background:#fff}.bw-wrap{background:#fff;border-color:#ccc}.hd h1{-webkit-text-fill-color:#b8860f;color:#b8860f}.gb{background:#f8f9fa;border-color:#ddd}}
+@media print{body{background:#fff}.bw-wrap{background:#fff;border-color:#ccc}.bw-wrap::before{display:none}.hd h1{-webkit-text-fill-color:#b8860f;color:#b8860f}.gb{background:#f8f9fa;border-color:#ddd}}
 </style>
 </head>
 <body>
@@ -123,9 +118,6 @@ const T={1:"Mexico",2:"South Africa",3:"South Korea",4:"Czechia",5:"Canada",6:"B
 const Fl={1:"🇲🇽",2:"🇿🇦",3:"🇰🇷",4:"🇨🇿",5:"🇨🇦",6:"🇧🇦",7:"🇶🇦",8:"🇨🇭",9:"🇧🇷",10:"🇲🇦",11:"🇭🇹",12:"🏴󠁧󠁢󠁳󠁣󠁴󠁿",13:"🇺🇸",14:"🇵🇾",15:"🇦🇺",16:"🇹🇷",17:"🇩🇪",18:"🇨🇼",19:"🇨🇮",20:"🇪🇨",21:"🇳🇱",22:"🇯🇵",23:"🇸🇪",24:"🇹🇳",25:"🇧🇪",26:"🇪🇬",27:"🇮🇷",28:"🇳🇿",29:"🇪🇸",30:"🇨🇻",31:"🇸🇦",32:"🇺🇾",33:"🇫🇷",34:"🇸🇳",35:"🇮🇶",36:"🇳🇴",37:"🇦🇷",38:"🇩🇿",39:"🇦🇹",40:"🇯🇴",41:"🇵🇹",42:"🇨🇩",43:"🇺🇿",44:"🇨🇴",45:"🏴󠁧󠁢󠁥󠁮󠁧󠁿",46:"🇭🇷",47:"🇬🇭",48:"🇵🇦"}
 const Gr={A:[1,2,3,4],B:[5,6,7,8],C:[9,10,11,12],D:[13,14,15,16],E:[17,18,19,20],F:[21,22,23,24],G:[25,26,27,28],H:[29,30,31,32],I:[33,34,35,36],J:[37,38,39,40],K:[41,42,43,44],L:[45,46,47,48]}
 const Sec={S1:{g:['A','B','C']},S2:{g:['D','E','F']},S3:{g:['G','H','I']},S4:{g:['J','K','L']}}
-
-let searchActive = false
-let searchTeamId = null
 
 function es(s){var d=document.createElement('div');d.textContent=s;return d.innerHTML}
 
@@ -188,7 +180,7 @@ async function build(){
     info.x.forEach((t,i)=>{
       const r=i+1,qd=r<=2||bt[t.id],tb=bt[t.id]&&r>2
       const cls=qd&&r<=2?'q':tb?'b':t.s.p==3?'o':''
-      gcol+='<div class="r '+cls+'"><span class="fl">'+(Fl[t.id]||'')+'</span><span class="nm" data-tid="'+t.id+'">'+es(T[t.id]||'?')+'</span><span class="pt">'+t.s.pt+'</span></div>'
+      gcol+='<div class="r '+cls+'"><span class="fl">'+(Fl[t.id]||'')+'</span><span class="nm">'+es(T[t.id]||'?')+'</span><span class="pt">'+t.s.pt+'</span></div>'
     })
     gcol+='</div></div>'
   })
@@ -206,29 +198,20 @@ async function build(){
       const fn = !!sc
       const fl1 = Fl[tid1]||'', fl2 = Fl[tid2]||''
       const sn1 = T[tid1]||'?', sn2 = T[tid2]||'?'
-      const sn1s = sn1.length>4?sn1.substring(0,3)+'…':sn1
-      const sn2s = sn2.length>4?sn2.substring(0,3)+'…':sn2
+      const sn1s = sn1.length>5?sn1.substring(0,4)+'…':sn1
+      const sn2s = sn2.length>5?sn2.substring(0,4)+'…':sn2
       const scoreStr = fn ? `<span class="fs">${sc[2]}-${sc[3]}</span>` : '<span class="vs">vs</span>'
       const cls = fn?'f':'nf'
-      blockHtml += `<div class="grp-m ${cls}" data-t1="${tid1}" data-t2="${tid2}"><span class="fh">${fl1}</span><span class="fn">${es(sn1s)}</span>${scoreStr}<span class="fn" style="text-align:right">${es(sn2s)}</span><span class="fa">${fl2}</span></div>`
+      blockHtml += `<div class="grp-m ${cls}"><span class="fh">${fl1}</span><span class="fn">${es(sn1s)}</span>${scoreStr}<span class="fn" style="text-align:right">${es(sn2s)}</span><span class="fa">${fl2}</span></div>`
     })
     blockHtml+='</div>'
     grpHtml+=blockHtml
   })
   grpHtml+='</div>'
 
-  const statsHtml = `<div class="stats"><div class="st-card"><div class="st-v">${totalMatches}</div><div class="st-l">Matches</div></div><div class="st-card"><div class="st-v">${finishedMatches}</div><div class="st-l">Played</div></div><div class="st-card"><div class="st-v">${totalMatches-finishedMatches}</div><div class="st-l">Remaining</div></div><div class="st-card"><div class="st-v">${totalGoals}</div><div class="st-l">Goals</div></div><div class="st-card"><div class="st-v">${liveMatches}<span class="live-dot" style="${liveMatches?'':'display:none'}"></span></div><div class="st-l">Live</div></div></div>`
+  const statsHtml = `<div class="stats"><div class="st-card"><div class="st-v">${totalMatches}</div><div class="st-l">Matches</div></div><div class="st-card"><div class="st-v">${finishedMatches}</div><div class="st-l">Played</div></div><div class="st-card"><div class="st-v">${totalMatches-finishedMatches}</div><div class="st-l">Remaining</div></div><div class="st-card"><div class="st-v">${totalGoals}</div><div class="st-l">Goals</div></div><div class="st-card"><div class="st-v">${liveMatches}</div><div class="st-l">Live</div></div></div>`
 
-  let appHtml = '<div class="app">'+statsHtml+'<div class="hd"><h1>🏆 WORLD CUP 2026</h1><div class="sub">United States · Canada · Mexico</div></div><div class="search-wrap"><input id="teamSearch" type="text" placeholder="🔍 Search a team to highlight their path…" autocomplete="off"></div><div class="bw-wrap">'+gcol
-
-  function applySearch(tid){
-    document.querySelectorAll('.grp-m,.bracket-match,.gb .r').forEach(el=>{
-      if(!tid){el.classList.remove('highlight','dim');return}
-      const hasTeam = el.dataset&&(String(el.dataset.t1)===String(tid)||String(el.dataset.t2)===String(tid)||String(el.dataset.tid)===String(tid))
-      if(hasTeam) el.classList.add('highlight')
-      else el.classList.add('dim')
-    })
-  }
+  let appHtml='<div class="app">'+statsHtml+'<div class="hd"><h1>🏆 WORLD CUP 2026</h1><div class="sub">United States · Canada · Mexico</div><div class="div"></div><div class="info">'+(liveMatches?'<span class="ld"></span> ':'')+gm.length+' matches</div></div><div class="bw-wrap">'+gcol
 
   if(allGroupsConfirmed){
     const sn={S1:{w:[],r:[]},S2:{w:[],r:[]},S3:{w:[],r:[]},S4:{w:[],r:[]}}
@@ -247,62 +230,37 @@ async function build(){
       const tg=teamGroup[h]||{},ag=teamGroup[a]||{}
       const hLabel=tg.status?tg.group+(tg.status=='W'?'1':tg.status=='RU'?'2':''):''
       const aLabel=ag.status?ag.group+(ag.status=='W'?'1':ag.status=='RU'?'2':''):''
+      const hBadge=hLabel?' <span style="color:#888;font-size:8px">('+hLabel+')</span>':''
+      const aBadge=aLabel?' <span style="color:#888;font-size:8px">('+aLabel+')</span>':''
       matches.push({
         roundIndex:0,order:i,
-        sides:[{title:Fl[h]+' '+T[h]+(hLabel?' <span style="color:#666;font-size:9px">('+hLabel+')</span>':''),contestantId:String(h),scores:fn?[{mainScore:hs}]:[],isWinner:fn&&hs!==null&&as!==null&&hs>as},
-        {title:Fl[a]+' '+T[a]+(aLabel?' <span style="color:#666;font-size:9px">('+aLabel+')</span>':''),scores:fn?[{mainScore:as}]:[],isWinner:fn&&as!==null&&hs!==null&&as>hs}]
+        sides:[{title:Fl[h]+' '+T[h]+hBadge,contestantId:String(h),scores:fn?[{mainScore:hs}]:[],isWinner:fn&&hs!==null&&as!==null&&hs>as},
+        {title:Fl[a]+' '+T[a]+aBadge,scores:fn?[{mainScore:as}]:[],isWinner:fn&&as!==null&&hs!==null&&as>hs}]
       })
     })
     for(let r=1;r<5;r++){const cnt=Math.pow(2,4-r);for(let m=0;m<cnt;m++)matches.push({roundIndex:r,order:m,sides:[{title:'—'},{title:'—'}]})}
 
     const data={rounds:[{name:'R32'},{name:'R16'},{name:'QF'},{name:'SF'},{name:'🏆 FINAL'}],matches}
-    appHtml+='<div class="bw"><div class="bracket-rows">'+grpHtml+'<div id="bracket"></div></div></div></div>'
+    appHtml+='<div class="bw"><div class="bracket-rows">'+grpHtml+'<div id="bracket"></div></div></div></div><div class="ft"><span class="b"><span class="d g"></span>Adv</span><span class="b"><span class="d y"></span>3rd</span><span class="b"><span class="d gr"></span>Out</span></div></div>'
     document.getElementById('app').innerHTML=appHtml
 
     createBracket(data,document.getElementById('bracket'),{
-      navButtonsPosition:'overMatches',roundTitleColor:'#555',matchTextColor:'#e0e0e0',rootBgColor:'transparent',rootBorderColor:'transparent',connectionLinesColor:'#1a2a4e',connectionLinesWidth:1.5,matchFontSize:10,matchHorMargin:10,matchMinVerticalGap:10,matchAxisMargin:1,matchMaxWidth:170,matchBackgroundColor:'#121A2F',matchBackgroundBorderColor:'#1a2a4e',hoveredMatchBorderColor:'#FFD16644',highlightedPlayerTitleColor:'#FFD166',highlightedConnectionLinesColor:'#FFD16666',liveMatchBorderColor:'#EF4444',liveMatchBgColor:'#1a1010',
-      getScoresHTML(s){if(s.scores&&s.scores.length>0){const v=s.scores[0].mainScore;if(v!==null&&v!==undefined)return `<span style="font-weight:700;font-size:12px;color:#FFD166">${v}</span>`}return''},
-      getPlayerTitleHTML(s){return`<span style="font-size:11px" class="bracket-match" data-cid="${s.contestantId||''}">${s.title||'—'}</span>`},
+      navButtonsPosition:'overMatches',roundTitleColor:'#555',matchTextColor:'#e0e0e0',rootBgColor:'transparent',rootBorderColor:'transparent',connectionLinesColor:'#2a2a3e',connectionLinesWidth:1.5,matchFontSize:10,matchHorMargin:10,matchMinVerticalGap:10,matchAxisMargin:1,matchMaxWidth:180,matchBackgroundColor:'#111124',matchBackgroundBorderColor:'#1e1e38',hoveredMatchBorderColor:'#ffd70044',highlightedPlayerTitleColor:'#ffd700',highlightedConnectionLinesColor:'#ffd70066',liveMatchBorderColor:'#4caf50',liveMatchBgColor:'#0d2010',
+      getScoresHTML(s){if(s.scores&&s.scores.length>0){const v=s.scores[0].mainScore;if(v!==null&&v!==undefined)return `<span style="font-weight:700;font-size:10px;color:#ffd700">${v}</span>`}return''},
+      getPlayerTitleHTML(s){return`<span style="font-size:10px">${s.title||'—'}</span>`},
       getNationalityHTML(){return''},
       getEntryStatusHTML(){return''},
-      roundTitlesFontSize:9,roundTitlesVerticalPadding:4
+      roundTitlesFontSize:8,roundTitlesVerticalPadding:4
     })
-
-    // Add data-t1/t2 to bracketry match containers after render
-    setTimeout(()=>{
-      const matches = data.matches.filter(m=>m.roundIndex===0)
-      document.querySelectorAll('.bracket-root .match-wrapper').forEach((el,i)=>{
-        if(matches[i]){
-          el.dataset.t1 = matches[i].sides[0].contestantId || ''
-          el.dataset.t2 = matches[i].sides[1]?.contestantId || ''
-        }
-      })
-    },100)
   } else {
-    appHtml+='<div class="bw"><div class="bracket-rows">'+grpHtml+'<div id="bracket"></div></div></div></div>'
+    appHtml+='<div class="bw"><div class="bracket-rows">'+grpHtml+'<div id="bracket"></div></div></div></div><div class="ft"><span class="b"><span class="d g"></span>Adv</span><span class="b"><span class="d y"></span>3rd</span><span class="b"><span class="d gr"></span>Out</span></div></div>'
     document.getElementById('app').innerHTML=appHtml
     const placeholderData={rounds:[{name:'R32'},{name:'R16'},{name:'QF'},{name:'SF'},{name:'🏆 FINAL'}],matches:[]}
     for(let r=0;r<5;r++){const cnt=r===0?16:Math.pow(2,4-r);for(let m=0;m<cnt;m++)placeholderData.matches.push({roundIndex:r,order:m,sides:[{title:'—'},{title:'—'}]})}
-    createBracket(placeholderData,document.getElementById('bracket'),{navButtonsPosition:'overMatches',roundTitleColor:'#555',matchTextColor:'#555',rootBgColor:'transparent',rootBorderColor:'transparent',connectionLinesColor:'#1a2a4e',connectionLinesWidth:1.5,matchFontSize:10,matchHorMargin:10,matchMinVerticalGap:10,matchAxisMargin:1,matchMaxWidth:170,matchBackgroundColor:'#0a0a14',matchBackgroundBorderColor:'#1a2a4e',roundTitlesFontSize:9,roundTitlesVerticalPadding:4})
-  }
-
-  // Team search with path highlighting
-  const searchInput = document.getElementById('teamSearch')
-  if(searchInput){
-    const teamNames = Object.keys(T).map(id=>({id:+id,name:T[id],flag:Fl[id]||''}))
-    searchInput.addEventListener('input',()=>{
-      const val = searchInput.value.trim().toLowerCase()
-      if(val.length<2){
-        if(searchActive){searchActive=false;searchTeamId=null;document.querySelectorAll('.grp-m,.bracket-match,.gb .r').forEach(el=>{el.classList.remove('highlight','dim')})}
-        return
-      }
-      const match = teamNames.find(t=>t.name.toLowerCase().includes(val))
-      if(match){searchActive=true;searchTeamId=match.id;applySearch(match.id)}else{searchActive=false;searchTeamId=null;document.querySelectorAll('.grp-m,.bracket-match,.gb .r').forEach(el=>{el.classList.remove('highlight','dim')})}
-    })
+    createBracket(placeholderData,document.getElementById('bracket'),{navButtonsPosition:'overMatches',roundTitleColor:'#555',matchTextColor:'#555',rootBgColor:'transparent',rootBorderColor:'transparent',connectionLinesColor:'#1a1a2e',connectionLinesWidth:1.5,matchFontSize:10,matchHorMargin:10,matchMinVerticalGap:10,matchAxisMargin:1,matchMaxWidth:180,matchBackgroundColor:'#0a0a14',matchBackgroundBorderColor:'#1a1a2e',roundTitlesFontSize:8,roundTitlesVerticalPadding:4})
   }
 }
-
-build().catch(e=>{document.getElementById('app').innerHTML='<div class="loading"><span style="color:#EF4444">Failed: '+es(e.message)+'</span></div>'})
+build().catch(e=>{document.getElementById('app').innerHTML='<div class="loading"><span style="color:#c62828">Failed: '+es(e.message)+'</span></div>'})
 </script>
 </body>
 </html>
