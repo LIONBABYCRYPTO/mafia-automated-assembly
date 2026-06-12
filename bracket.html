@@ -10,17 +10,16 @@ html,body{height:100%}
 body{font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,Roboto,sans-serif;background:#0b0b14;color:#e0e0e0;overflow-x:hidden}
 .app{max-width:1600px;margin:0 auto;padding:12px 12px 10px;min-height:100vh;display:flex;flex-direction:column}
 
-/* Stats bar */
-.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(80px,1fr));gap:6px;margin-bottom:8px;flex-shrink:0}
-.st-card{background:#121A2F;border:1px solid #1a2a4e;border-radius:10px;padding:6px 8px;text-align:center}
-.st-card .st-v{font-size:16px;font-weight:700;color:#ffd700}
-.st-card .st-l{font-size:8px;color:#666;text-transform:uppercase;letter-spacing:.5px;margin-top:1px}
-
-.hd{text-align:center;margin-bottom:6px;flex-shrink:0}
-.hd h1{font-size:26px;font-weight:800;background:linear-gradient(135deg,#ffd700,#f5a623 60%,#ff6b35);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;letter-spacing:1px;line-height:1.2}
-.hd .sub{font-size:10px;color:#555;letter-spacing:1.5px;text-transform:uppercase}
-.hd .div{width:30px;height:1.5px;background:linear-gradient(90deg,transparent,#ffd70044,transparent);margin:3px auto}
-.hd .info{font-size:11px;color:#666}
+/* Stats bar - inline with header */
+.hd-wrap{display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-shrink:0;flex-wrap:wrap}
+.hd{text-align:left;flex-shrink:0}
+.hd h1{font-size:20px;font-weight:800;background:linear-gradient(135deg,#ffd700,#f5a623 60%,#ff6b35);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;letter-spacing:1px;line-height:1.2}
+.hd .sub{font-size:8px;color:#555;letter-spacing:1.5px;text-transform:uppercase}
+.stats{display:flex;gap:4px;flex-wrap:wrap;flex:1;justify-content:flex-end}
+.st-card{background:#0e0e1a;border:1px solid #1a1a2e;border-radius:6px;padding:3px 7px;text-align:center;min-width:50px}
+.st-card .st-v{font-size:13px;font-weight:700;color:#ffd700}
+.st-card .st-l{font-size:7px;color:#555;text-transform:uppercase;letter-spacing:.3px}
+.hd .info{font-size:9px;color:#555}
 
 .bw-wrap{flex:1;display:flex;gap:0;min-height:0;overflow:hidden;border:1px solid #1a1a2e;border-radius:8px;background:linear-gradient(180deg,#0e0e1a,#090912);position:relative}
 .bw-wrap::before{content:'';position:absolute;top:0;left:0;height:1.5px;background:linear-gradient(90deg,transparent,#ffd70022,transparent);z-index:2}
@@ -98,10 +97,13 @@ body{font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,Roboto,sans-serif;b
 #bracket{min-width:750px}
 .bracket-root{--matchFontSize:16px!important;--roundTitlesFontSize:14px!important;--matchMaxWidth:260px!important;--matchMinVerticalGap:18px!important;--matchHorMargin:16px!important}
 .gc-body .gb{padding:5px 6px}
-.stats{grid-template-columns:repeat(5,1fr)}
-.st-card{padding:10px 12px}
-.st-card .st-v{font-size:22px}
-.st-card .st-l{font-size:10px}
+.hd-wrap{gap:12px}
+.hd h1{font-size:26px}
+.hd .sub{font-size:10px}
+.hd .info{font-size:11px}
+.st-card{padding:5px 10px}
+.st-card .st-v{font-size:16px}
+.st-card .st-l{font-size:8px}
 }
 
 @media print{body{background:#fff}.bw-wrap{background:#fff;border-color:#ccc}.bw-wrap::before{display:none}.hd h1{-webkit-text-fill-color:#b8860f;color:#b8860f}.gb{background:#f8f9fa;border-color:#ddd}}
@@ -211,7 +213,7 @@ async function build(){
 
   const statsHtml = `<div class="stats"><div class="st-card"><div class="st-v">${totalMatches}</div><div class="st-l">Matches</div></div><div class="st-card"><div class="st-v">${finishedMatches}</div><div class="st-l">Played</div></div><div class="st-card"><div class="st-v">${totalMatches-finishedMatches}</div><div class="st-l">Remaining</div></div><div class="st-card"><div class="st-v">${totalGoals}</div><div class="st-l">Goals</div></div><div class="st-card"><div class="st-v">${liveMatches}</div><div class="st-l">Live</div></div></div>`
 
-  let appHtml='<div class="app">'+statsHtml+'<div class="hd"><h1>🏆 WORLD CUP 2026</h1><div class="sub">United States · Canada · Mexico</div><div class="div"></div><div class="info">'+(liveMatches?'<span class="ld"></span> ':'')+gm.length+' matches</div></div><div class="bw-wrap">'+gcol
+  let appHtml='<div class="app"><div class="hd-wrap"><div class="hd"><h1>🏆 WORLD CUP 2026</h1><div class="sub">United States · Canada · Mexico</div><div class="info">'+(liveMatches?'<span class="ld"></span> ':'')+gm.length+' matches</div></div>'+statsHtml+'</div><div class="bw-wrap">'+gcol
 
   if(allGroupsConfirmed){
     const sn={S1:{w:[],r:[]},S2:{w:[],r:[]},S3:{w:[],r:[]},S4:{w:[],r:[]}}
