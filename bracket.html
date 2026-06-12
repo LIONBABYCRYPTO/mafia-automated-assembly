@@ -11,25 +11,25 @@ body{font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,Roboto,sans-serif;b
 .app{max-width:1600px;margin:0 auto;padding:12px 12px 10px;min-height:100vh;display:flex;flex-direction:column}
 
 .hd{text-align:center;margin-bottom:8px;flex-shrink:0}
-.hd h1{font-size:22px;font-weight:800;background:linear-gradient(135deg,#ffd700,#f5a623 60%,#ff6b35);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;letter-spacing:1px;line-height:1.2}
-.hd .sub{font-size:8px;color:#555;letter-spacing:1.5px;text-transform:uppercase}
+.hd h1{font-size:26px;font-weight:800;background:linear-gradient(135deg,#ffd700,#f5a623 60%,#ff6b35);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;letter-spacing:1px;line-height:1.2}
+.hd .sub{font-size:10px;color:#555;letter-spacing:1.5px;text-transform:uppercase}
 .hd .div{width:30px;height:1.5px;background:linear-gradient(90deg,transparent,#ffd70044,transparent);margin:3px auto}
-.hd .info{font-size:9px;color:#666}
+.hd .info{font-size:11px;color:#666}
 
 .bw-wrap{flex:1;display:flex;gap:0;min-height:0;overflow:hidden;border:1px solid #1a1a2e;border-radius:8px;background:linear-gradient(180deg,#0e0e1a,#090912);position:relative}
 .bw-wrap::before{content:'';position:absolute;top:0;left:0;height:1.5px;background:linear-gradient(90deg,transparent,#ffd70022,transparent);z-index:2}
 
 /* Groups column - just standings, no RR */
-.groups-col{width:110px;flex-shrink:0;overflow-y:auto;padding:0 4px 4px;border-right:1px solid #1a1a2e;display:flex;flex-direction:column;gap:2px}
-.groups-col .gc-hdr{text-align:center;font-size:8px;text-transform:uppercase;letter-spacing:1.5px;font-weight:700;color:#555;padding:5px 2px;border-bottom:1px solid #1a1a2e;line-height:1;flex-shrink:0}
-.gc-body{flex:1;display:flex;flex-direction:column;gap:2px;padding-top:1px}
-.gc-body .gb{background:#0e0e1a;border:1px solid #1a1a2e;border-radius:4px;padding:2px 3px;flex:1;display:flex;flex-direction:column;justify-content:center}
-.gb .gl{font-size:7px;font-weight:700;color:#ffd700;letter-spacing:.3px;border-bottom:1px solid #1a1a2e;padding-bottom:1px;margin-bottom:1px;text-align:center}
-.gb .gt{font-size:7px;line-height:1.4}
-.gb .gt .r{display:flex;justify-content:space-between;padding:0 1px;align-items:center;gap:1px}
-.gb .gt .r .fl{font-size:8px;flex-shrink:0}
-.gb .gt .r .nm{flex:1;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:7px}
-.gb .gt .r .pt{min-width:10px;text-align:right;font-weight:600;font-size:7px}
+.groups-col{width:120px;flex-shrink:0;overflow-y:auto;padding:0 6px 6px;border-right:1px solid #1a1a2e;display:flex;flex-direction:column;gap:3px}
+.groups-col .gc-hdr{text-align:center;font-size:10px;text-transform:uppercase;letter-spacing:1.5px;font-weight:700;color:#555;padding:6px 2px;border-bottom:1px solid #1a1a2e;line-height:1;flex-shrink:0}
+.gc-body{flex:1;display:flex;flex-direction:column;gap:3px;padding-top:1px}
+.gc-body .gb{background:#0e0e1a;border:1px solid #1a1a2e;border-radius:4px;padding:3px 4px;flex:1;display:flex;flex-direction:column;justify-content:center}
+.gb .gl{font-size:9px;font-weight:700;color:#ffd700;letter-spacing:.3px;border-bottom:1px solid #1a1a2e;padding-bottom:1px;margin-bottom:2px;text-align:center}
+.gb .gt{font-size:9px;line-height:1.5}
+.gb .gt .r{display:flex;justify-content:space-between;padding:1px 1px;align-items:center;gap:2px}
+.gb .gt .r .fl{font-size:10px;flex-shrink:0}
+.gb .gt .r .nm{flex:1;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:9px}
+.gb .gt .r .pt{min-width:12px;text-align:right;font-weight:600;font-size:9px}
 .gb .gt .r.q .nm{color:#a5d6a7;font-weight:600}
 .gb .gt .r.q .pt{color:#a5d6a7}
 .gb .gt .r.b .nm{color:#ffcc80}
@@ -42,24 +42,24 @@ body{font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,Roboto,sans-serif;b
 #bracket{min-width:580px;height:100%}
 
 /* Group round column in bracket area */
-.grp-round{display:inline-block;vertical-align:top;width:160px;height:100%;overflow-y:auto;padding:2px;flex-shrink:0}
-.grp-round .grp-title{text-align:center;font-size:9px;text-transform:uppercase;letter-spacing:1.5px;font-weight:700;color:#555;padding:5px 2px;border-bottom:1px solid #1a1a2e;line-height:1;margin-bottom:3px}
-.grp-block{border:1px solid #1a1a2e;border-radius:4px;margin-bottom:2px;background:#0e0e1a}
-.grp-block .gl{font-size:8px;font-weight:700;color:#ffd700;letter-spacing:.3px;padding:3px 4px;border-bottom:1px solid #1a1a2e;text-align:center}
-.grp-m{display:flex;align-items:center;gap:2px;font-size:7px;padding:2px 4px;justify-content:space-between;line-height:1.2}
-.grp-m .fh{flex-shrink:0;font-size:8px}
-.grp-m .fa{flex-shrink:0;font-size:8px}
-.grp-m .fs{color:#ffd700;font-weight:700;font-size:7px;min-width:12px;text-align:center}
-.grp-m .vs{color:#555;font-size:6px;margin:0 2px}
-.grp-m .fn{font-size:7px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+.grp-round{display:inline-block;vertical-align:top;width:180px;height:100%;overflow-y:auto;padding:2px;flex-shrink:0}
+.grp-round .grp-title{text-align:center;font-size:11px;text-transform:uppercase;letter-spacing:1.5px;font-weight:700;color:#555;padding:6px 2px;border-bottom:1px solid #1a1a2e;line-height:1;margin-bottom:4px}
+.grp-block{border:1px solid #1a1a2e;border-radius:4px;margin-bottom:3px;background:#0e0e1a}
+.grp-block .gl{font-size:10px;font-weight:700;color:#ffd700;letter-spacing:.3px;padding:4px 5px;border-bottom:1px solid #1a1a2e;text-align:center}
+.grp-m{display:flex;align-items:center;gap:3px;font-size:9px;padding:3px 5px;justify-content:space-between;line-height:1.3}
+.grp-m .fh{flex-shrink:0;font-size:10px}
+.grp-m .fa{flex-shrink:0;font-size:10px}
+.grp-m .fs{color:#ffd700;font-weight:700;font-size:9px;min-width:14px;text-align:center}
+.grp-m .vs{color:#555;font-size:8px;margin:0 2px}
+.grp-m .fn{font-size:9px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
 .grp-m.f{opacity:0.6}
 .grp-m.nf{opacity:0.3}
 
 .bracket-rows{display:flex;height:100%;align-items:flex-start;gap:0}
 
-.ft{flex-shrink:0;text-align:center;font-size:8px;color:#444;margin-top:5px;padding-top:3px;border-top:1px solid #141414}
-.ft .b{display:inline;margin:0 3px}
-.ft .d{display:inline-block;width:3px;height:3px;border-radius:50%;margin-right:2px;vertical-align:middle}
+.ft{flex-shrink:0;text-align:center;font-size:10px;color:#444;margin-top:5px;padding-top:3px;border-top:1px solid #141414}
+.ft .b{display:inline;margin:0 4px}
+.ft .d{display:inline-block;width:4px;height:4px;border-radius:50%;margin-right:2px;vertical-align:middle}
 .ft .d.g{background:#a5d6a7}
 .ft .d.y{background:#ffcc80}
 .ft .d.gr{background:#555}
@@ -71,7 +71,7 @@ body{font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,Roboto,sans-serif;b
 .loading .s{width:22px;height:22px;border:2px solid #1a1a2e;border-top:2px solid #ffd700;border-radius:50%;animation:sp .8s linear infinite}
 @keyframes sp{to{transform:rotate(360deg)}}
 
-.bracket-root{--matchFontSize:9px!important;--roundTitlesFontSize:8px!important;--matchMaxWidth:170px!important;--matchMinVerticalGap:8px!important;--matchHorMargin:8px!important}
+.bracket-root{--matchFontSize:11px!important;--roundTitlesFontSize:10px!important;--matchMaxWidth:190px!important;--matchMinVerticalGap:10px!important;--matchHorMargin:10px!important}
 .bracket-root .round-wrapper{min-width:130px}
 
 @media(min-width:768px){
@@ -184,8 +184,8 @@ async function build(){
       const sc = getScore(tid1, tid2)
       const fn = !!sc
       const fl1 = Fl[tid1]||'', fl2 = Fl[tid2]||''
-      const sn1 = (T[tid1]||'').length>5 ? (T[tid1]||'').substring(0,4)+'…' : T[tid1]||'?'
-      const sn2 = (T[tid2]||'').length>5 ? (T[tid2]||'').substring(0,4)+'…' : T[tid2]||'?'
+      const sn1 = (T[tid1]||'').length>4 ? (T[tid1]||'').substring(0,3)+'…' : T[tid1]||'?'
+      const sn2 = (T[tid2]||'').length>4 ? (T[tid2]||'').substring(0,3)+'…' : T[tid2]||'?'
       const scoreStr = fn ? `<span class="fs">${sc[2]}-${sc[3]}</span>` : '<span class="vs">vs</span>'
       const cls = fn?'f':'nf'
       blockHtml += `<div class="grp-m ${cls}"><span class="fh">${fl1}</span><span class="fn">${es(sn1)}</span>${scoreStr}<span class="fn" style="text-align:right">${es(sn2)}</span><span class="fa">${fl2}</span></div>`
