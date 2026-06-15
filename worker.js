@@ -184,10 +184,10 @@ var onRequest = async (context) => {
       const raw = await env.GAME_KV.get(`room:${body.room_code}`);
       if (!raw) return json({ error: "Room not found" }, 404, origin);
       const state = JSON.parse(raw);
-      const player = state.players.find((p) => p.id === body.voter_id && p.userId === auth.token);
+      const player = state.players.find((p) => p.id === Number(body.voter_id) && p.userId === auth.token);
       if (!player) return json({ error: "Forbidden" }, 403, origin);
-      state.dayVotes = state.dayVotes.filter((v) => v.voterId !== body.voter_id);
-      state.dayVotes.push({ voterId: body.voter_id, targetId: body.target_id });
+      state.dayVotes = state.dayVotes.filter((v) => v.voterId !== Number(body.voter_id));
+      state.dayVotes.push({ voterId: Number(body.voter_id), targetId: Number(body.target_id) });
       await env.GAME_KV.put(`room:${body.room_code}`, JSON.stringify(state));
       return json({ success: true }, 200, origin);
     }

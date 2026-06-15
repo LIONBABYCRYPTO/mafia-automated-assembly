@@ -705,7 +705,7 @@
         if (!players) return;
         var alive = players.filter(function(p) { return p.alive && p.id !== playerId; });
         list.innerHTML = alive.map(function(p) {
-          return '<div class="vote-target" data-id="' + p.id + '" onclick="selectVoteTarget(this, \'' + p.id + '\')">' + esc(p.name) + '</div>';
+          return '<div class="vote-target" data-id="' + p.id + '" onclick="selectVoteTarget(this, ' + p.id + ')">' + esc(p.name) + '</div>';
         }).join('');
       }).catch(function() {});
     }
