@@ -1,0 +1,17 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="630" rx="0" fill="#0a0a0f"/>
+  <!-- Geometric background shapes -->
+  <path d="M200 100L250 50L300 100L250 150Z" fill="#0071e3" opacity="0.05"/>
+  <path d="M850 80L920 45L990 80L920 115Z" fill="#0071e3" opacity="0.05"/>
+  <path d="M150 400L200 350L250 400L200 450Z" fill="#0071e3" opacity="0.03"/>
+  <path d="M950 500L1000 450L1050 500L1000 550Z" fill="#0071e3" opacity="0.03"/>
+  <circle cx="600" cy="315" r="200" fill="none" stroke="#0071e3" stroke-width="0.5" opacity="0.1"/>
+  <circle cx="600" cy="315" r="160" fill="none" stroke="#0071e3" stroke-width="0.5" opacity="0.08"/>
+  <!-- Diamond logo -->
+  <path d="M600 200L680 315L600 430L520 315Z" fill="#0071e3" stroke="#0071e3" stroke-width="2" opacity="0.9"/>
+  <path d="M600 200L600 430" stroke="#0a0a0f" stroke-width="2" opacity="0.3"/>
+  <path d="M520 315L680 315" stroke="#0a0a0f" stroke-width="2" opacity="0.3"/>
+  <!-- Text -->
+  <text x="600" y="500" text-anchor="middle" fill="white" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="700" letter-spacing="-1">BridgeFlow</text>
+  <text x="600" y="540" text-anchor="middle" fill="#888" font-family="system-ui, -apple-system, sans-serif" font-size="22" font-weight="400">Cross-Chain Transfers Made Simple</text>
+</svg>
