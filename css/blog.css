@@ -1,0 +1,154 @@
+/* ============================================================
+   Werewolf — Content Pages Styles
+   For blog, strategy, rules, about pages
+   ============================================================ */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+body{font-family:Inter,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0b0b14;color:#e0e0e0;line-height:1.7;font-size:16px;-webkit-font-smoothing:antialiased}
+.container{max-width:740px;margin:0 auto;padding:20px 20px 40px}
+
+/* Navigation */
+.nav{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid #1e1e38;margin-bottom:32px;flex-wrap:wrap;gap:8px}
+.nav-brand{font-size:20px;font-weight:800;color:#fff;text-decoration:none;background:linear-gradient(135deg,#6c63ff,#ff4757);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.nav-links{display:flex;gap:16px;align-items:center}
+.nav-links a{color:#888;text-decoration:none;font-size:14px;font-weight:500;transition:color .2s;padding:4px 0}
+.nav-links a:hover{color:#fff}
+.nav-links a.active{color:#6c63ff;border-bottom:2px solid #6c63ff}
+.nav-links a:last-child{background:linear-gradient(135deg,#6c63ff,#7c6aff);color:#fff;padding:8px 16px;border-radius:8px;font-weight:600}
+.nav-links a:last-child:hover{transform:translateY(-1px);box-shadow:0 4px 15px #6c63ff44}
+.nav-links a:last-child.active{border-bottom:none}
+
+/* Page Header */
+.page-header{margin-bottom:32px}
+.page-header h1{font-size:32px;font-weight:800;color:#fff;margin-bottom:8px;letter-spacing:-0.5px}
+.subtitle{color:#888;font-size:16px;line-height:1.6}
+
+/* Featured Card */
+.featured-card{background:linear-gradient(135deg,#12121e,#1a1a3e);border:1px solid #6c63ff44;border-radius:16px;padding:24px;margin-bottom:32px;position:relative}
+.featured-badge{position:absolute;top:-10px;left:20px;background:#6c63ff;color:#fff;padding:3px 12px;border-radius:20px;font-size:12px;font-weight:700}
+.featured-card h2{font-size:22px;font-weight:700;color:#fff;margin-bottom:8px}
+.featured-card .meta{color:#888;font-size:13px;margin-bottom:12px}
+.featured-card p{color:#ccc;margin-bottom:16px;line-height:1.7}
+
+/* Blog Grid */
+.blog-grid{display:flex;flex-direction:column;gap:20px;margin-bottom:32px}
+.blog-card{background:#12121e;border:1px solid #1e1e38;border-radius:14px;padding:24px;transition:border-color .2s}
+.blog-card:hover{border-color:#6c63ff44}
+.blog-card h3{font-size:18px;font-weight:700;color:#fff;margin-bottom:6px}
+.blog-card h4{font-size:15px;font-weight:600;color:#6c63ff;margin-top:16px;margin-bottom:6px}
+.blog-card .meta{color:#888;font-size:13px;margin-bottom:12px}
+.blog-card p{color:#ccc;line-height:1.7;margin-bottom:8px}
+.blog-card ul{margin:8px 0 8px 20px;color:#ccc}
+.blog-card li{margin-bottom:6px;line-height:1.6}
+.read-more{color:#6c63ff;text-decoration:none;font-weight:600;font-size:14px;display:inline-block;margin-top:8px}
+.read-more:hover{text-decoration:underline}
+
+/* Tactic List */
+.tactic-list{list-style:none;margin:12px 0 0;padding:0}
+.tactic-list li{padding:10px 14px;background:#0b0b14;border:1px solid #1e1e38;border-radius:8px;margin-bottom:8px;font-size:14px}
+.tactic-list li strong{color:#6c63ff;display:block;margin-bottom:2px}
+
+/* Table of Contents */
+.toc{background:#12121e;border:1px solid #1e1e38;border-radius:12px;padding:20px 24px;margin-bottom:32px}
+.toc h3{font-size:14px;text-transform:uppercase;letter-spacing:1px;color:#888;margin-bottom:10px}
+.toc ul{list-style:none;padding:0}
+.toc li{margin-bottom:4px}
+.toc a{color:#6c63ff;text-decoration:none;font-size:14px}
+.toc a:hover{text-decoration:underline}
+
+/* Sections */
+section{margin-bottom:40px;scroll-margin-top:60px}
+section h2{font-size:24px;font-weight:700;color:#fff;margin-bottom:16px;padding-bottom:8px;border-bottom:1px solid #1e1e38}
+section h3{font-size:18px;font-weight:600;color:#b8b8ff;margin-top:20px;margin-bottom:8px}
+section h4{font-size:15px;font-weight:600;color:#6c63ff;margin-top:16px;margin-bottom:6px}
+section p{color:#ccc;line-height:1.8;margin-bottom:12px}
+section ul,section ol{margin:8px 0 12px 24px;color:#ccc}
+section li{margin-bottom:6px;line-height:1.7}
+section strong{color:#e0e0e0}
+
+/* Role Cards */
+.role-card{background:#12121e;border:1px solid #1e1e38;border-left:3px solid #6c63ff;border-radius:10px;padding:16px 20px;margin-bottom:12px}
+.role-card h3{font-size:16px;font-weight:700;margin-top:0;color:#fff}
+.role-card p{margin-bottom:4px;font-size:14px}
+.role-card p:last-child{margin-bottom:0}
+
+/* Win Cards */
+.win-card{background:#12121e;border:1px solid #1e1e38;border-radius:10px;padding:16px 20px;margin-bottom:12px}
+.win-card h3{font-size:16px;margin-top:0}
+.win-card p{font-size:14px;margin-bottom:0}
+
+/* Variation Cards */
+.variation-card{background:#12121e;border:1px solid #1e1e38;border-radius:10px;padding:16px 20px;margin-bottom:12px}
+.variation-card h3{font-size:16px;font-weight:700;margin-top:0;color:#ffa502}
+.variation-card p{font-size:14px;margin-bottom:4px}
+
+/* Mistake Cards */
+.mistake-card{background:#12121e;border:1px solid #1e1e38;border-left:3px solid #ff4757;border-radius:10px;padding:16px 20px;margin-bottom:12px}
+.mistake-card h3{font-size:15px;margin-top:0}
+.mistake-card p{font-size:14px;margin-bottom:0}
+
+/* Details/FAQ */
+details{background:#12121e;border:1px solid #1e1e38;border-radius:10px;padding:14px 20px;margin-bottom:8px;cursor:pointer}
+details summary{font-weight:600;color:#e0e0e0;font-size:15px;cursor:pointer}
+details p{margin-top:10px;font-size:14px;color:#ccc;line-height:1.7}
+
+/* Blockquote */
+blockquote{background:#12121e;border-left:3px solid #6c63ff;border-radius:0 10px 10px 0;padding:16px 20px;margin-bottom:16px}
+blockquote p{font-style:italic;color:#ccc;margin-bottom:8px}
+blockquote cite{color:#888;font-size:13px;font-style:normal}
+
+/* Features Grid */
+.features-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
+.feature-item{background:#12121e;border:1px solid #1e1e38;border-radius:10px;padding:16px;text-align:center}
+.feature-icon{font-size:28px;display:block;margin-bottom:6px}
+.feature-item h3{font-size:14px;margin-top:0;margin-bottom:4px;color:#fff}
+.feature-item p{font-size:13px;color:#888;margin-bottom:0}
+
+/* Newsletter */
+.newsletter-section{background:linear-gradient(135deg,#12121e,#1a1a3e);border:1px solid #6c63ff44;border-radius:14px;padding:24px;text-align:center;margin-bottom:32px}
+.newsletter-section h3{font-size:18px;font-weight:700;color:#fff;margin-bottom:6px;margin-top:0}
+.newsletter-section p{color:#ccc;font-size:14px;margin-bottom:4px}
+.newsletter-section .note{color:#888;font-size:12px;margin-top:8px}
+
+/* CTA Section */
+.cta-section{background:linear-gradient(135deg,#12121e,#2a1a2e);border:1px solid #ff475744;border-radius:14px;padding:32px;text-align:center;margin-bottom:32px}
+.cta-section h2{font-size:22px;font-weight:700;color:#fff;margin-bottom:8px;border-bottom:none;padding-bottom:0}
+.cta-section p{margin-bottom:16px}
+
+/* Buttons */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:12px 24px;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;transition:all .2s;color:#fff;text-decoration:none}
+.btn-primary{background:linear-gradient(135deg,#6c63ff,#7c6aff)}
+.btn-primary:hover{transform:translateY(-1px);box-shadow:0 4px 15px #6c63ff44}
+.btn-large{padding:16px 32px;font-size:17px}
+
+/* About Section */
+.about-section{margin-bottom:40px}
+.about-section h2{font-size:22px;font-weight:700;color:#fff;margin-bottom:12px}
+.about-section p{color:#ccc;line-height:1.8;margin-bottom:12px}
+.about-section ul{margin:8px 0 12px 24px;color:#ccc}
+.about-section li{margin-bottom:6px;line-height:1.7}
+
+/* Footer */
+.footer{border-top:1px solid #1e1e38;padding-top:20px;margin-top:16px;text-align:center}
+.footer-links{display:flex;justify-content:center;gap:20px;margin-bottom:8px;flex-wrap:wrap}
+.footer-links a{color:#888;text-decoration:none;font-size:13px}
+.footer-links a:hover{color:#6c63ff}
+.footer p{color:#555;font-size:12px}
+
+/* Responsive */
+@media(max-width:640px){
+  .nav{flex-direction:column;align-items:flex-start}
+  .page-header h1{font-size:26px}
+  .features-grid{grid-template-columns:1fr}
+  .role-card{font-size:14px}
+  .blog-grid{gap:16px}
+}
+@media(max-width:480px){
+  .container{padding:12px 12px 32px}
+  .page-header h1{font-size:22px}
+  .featured-card h2{font-size:18px}
+  .blog-card h3{font-size:16px}
+  .nav-links{gap:10px;flex-wrap:wrap}
+  .nav-links a{font-size:13px}
+}

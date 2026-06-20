@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Werewolf - Host Dashboard</title>
+<title>Werewolf — Social Deduction Game | Play with Friends Online</title>
+<meta name="description" content="Free browser-based Werewolf social deduction game. Host games for 6-100+ players. QR code entry, auto role assignment, real-time voting. No app download needed.">
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4594842929104765" crossorigin="anonymous"></script>
 <script src="js/config.js"></script>
 <script src="js/lang.js"></script>
@@ -104,6 +105,21 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 .ad-banner{text-align:center;padding:12px;margin:12px 0;border:1px dashed #2a2a4a;border-radius:12px;color:#555;font-size:12px;display:none}
 .ad-banner.show{display:block}
 .ad-banner-sponsored{border-color:#6c63ff44;color:#6c63ff88}
+.ad-above-game{max-width:728px;margin:0 auto 16px;min-height:90px;display:none !important}
+
+/* Content Hero */
+.content-hero{background:linear-gradient(135deg,#0f0f1a,#1a1a3e);border-bottom:1px solid #2a2a4a;padding:20px 16px 24px}
+.content-nav{display:flex;align-items:center;justify-content:space-between;max-width:800px;margin:0 auto 20px}
+.content-nav-brand{font-size:22px;font-weight:800;color:#fff}
+.content-nav-brand .brand-gradient{background:linear-gradient(135deg,#6c63ff,#ff4757);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.content-nav-links{display:flex;gap:14px}
+.content-nav-links a{color:#888;text-decoration:none;font-size:13px;font-weight:500;transition:color .2s}
+.content-nav-links a:hover{color:#fff}
+.hero-text{max-width:800px;margin:0 auto;text-align:center}
+.hero-text h1{font-size:28px;font-weight:800;margin-bottom:8px;background:linear-gradient(135deg,#6c63ff,#b8b8ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.hero-subtitle{color:#aaa;font-size:15px;line-height:1.6;max-width:600px;margin:0 auto 16px}
+.hero-stats{display:flex;gap:16px;justify-content:center;flex-wrap:wrap}
+.hero-stats span{background:#1a1a2e;border:1px solid #2a2a4a;border-radius:8px;padding:6px 14px;font-size:13px;color:#ccc}
 
 /* Sponsor banner */
 .sponsor-banner{display:flex;align-items:center;gap:12px;padding:14px 16px;margin:12px 0;border-radius:12px;font-size:13px;display:none}
@@ -132,9 +148,51 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
   .room-code-display{font-size:28px}
   .btn{padding:12px 20px;font-size:14px}
 }
+/* Game Footer */
+.ad-below-game{max-width:728px;margin:0 auto;min-height:90px;display:none !important}
+.game-footer{background:#0a0a14;border-top:1px solid #1e1e38;margin-top:32px;padding:32px 16px 24px}
+.footer-inner{max-width:800px;margin:0 auto}
+.footer-sections{display:grid;grid-template-columns:2fr 1fr 1fr;gap:24px;margin-bottom:24px}
+.footer-section h4{font-size:14px;font-weight:700;color:#fff;margin-bottom:8px}
+.footer-section p{font-size:13px;color:#888;line-height:1.6;margin:0}
+.footer-section a{display:block;color:#888;text-decoration:none;font-size:13px;margin-bottom:4px;transition:color .2s}
+.footer-section a:hover{color:#6c63ff}
+.footer-bottom{border-top:1px solid #1e1e38;padding-top:16px;text-align:center}
+.footer-bottom p{color:#555;font-size:12px;margin:0}
 </style>
 </head>
 <body>
+
+<!-- ===== CONTENT HERO (for SEO and AdSense) ===== -->
+<section class="content-hero">
+  <nav class="content-nav">
+    <div class="content-nav-brand">🌙 <span class="brand-gradient">Werewolf</span></div>
+    <div class="content-nav-links">
+      <a href="/blog/">Blog</a>
+      <a href="/strategy/">Strategy</a>
+      <a href="/rules/">Rules</a>
+      <a href="/about/">About</a>
+    </div>
+  </nav>
+  <div class="hero-text">
+    <h1>The Ultimate Social Deduction Game</h1>
+    <p class="hero-subtitle">Free, browser-based Werewolf for 6–100+ players. Host a game in seconds — your friends join by scanning a QR code. No app download, no account needed.</p>
+    <div class="hero-stats">
+      <span>🎯 6–100+ players</span>
+      <span>📱 Zero install</span>
+      <span>⚡ Real-time voting</span>
+      <span>🔀 Auto role assignment</span>
+    </div>
+  </div>
+</section>
+
+<!-- AdSense Ad Unit -->
+<ins class="adsbygoogle ad-above-game"
+     style="display:block;text-align:center"
+     data-ad-format="horizontal"
+     data-ad-client="ca-pub-4594842929104765"
+     data-ad-slot="9473809358"></ins>
+<script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
 
 <div class="top-bar">
   <div class="logo">🌙 <span class="logo-gradient">Werewolf</span></div>
@@ -283,7 +341,43 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
     <div id="gameControls" class="card flex gap-12 wrap hidden"></div>
   </div>
 
-</div>
+</div><!-- /container -->
+
+<!-- Bottom AdSense Ad Unit -->
+<ins class="adsbygoogle ad-below-game"
+     style="display:block;text-align:center"
+     data-ad-format="autorelaxed"
+     data-ad-client="ca-pub-4594842929104765"
+     data-ad-slot="9473809358"></ins>
+<script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+
+<!-- ===== FOOTER CONTENT ===== -->
+<footer class="game-footer">
+  <div class="footer-inner">
+    <div class="footer-sections">
+      <div class="footer-section">
+        <h4>🌙 Werewolf</h4>
+        <p>Free, open-source social deduction game. Host games for 6–100+ players with zero setup.</p>
+      </div>
+      <div class="footer-section">
+        <h4>Learn</h4>
+        <a href="/strategy/">Strategy Guide</a>
+        <a href="/rules/">Rules & Variations</a>
+        <a href="/blog/">Blog</a>
+      </div>
+      <div class="footer-section">
+        <h4>More</h4>
+        <a href="/about/">About</a>
+        <a href="/privacy.html">Privacy</a>
+        <a href="/terms.html">Terms</a>
+        <a href="https://github.com/LIONBABYCRYPTO/mafia-automated-assembly">GitHub</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>© 2026 Werewolf. Open source under MIT license. Not affiliated with or endorsed by any external brand.</p>
+    </div>
+  </div>
+</footer>
 
 <script>
 // ===== STATE =====

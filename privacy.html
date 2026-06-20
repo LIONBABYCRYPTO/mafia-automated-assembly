@@ -3,45 +3,121 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Privacy Policy - Werewolf</title>
+<title>Privacy Policy — Werewolf Social Deduction Game</title>
+<meta name="description" content="Privacy policy for Werewolf, the open-source social deduction game. We collect minimal data and respect your privacy.">
+<link rel="stylesheet" href="/css/blog.css">
 <style>
-*{margin:0;padding:0;box-sizing:border-box}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,Ubuntu,sans-serif;background:#0f0f1a;color:#ccc;line-height:1.6;padding:20px}
-.container{max-width:700px;margin:0 auto}
-h1{color:#fff;font-size:1.8rem;margin-bottom:8px}
-h2{color:#6c63ff;font-size:1.2rem;margin-top:24px;margin-bottom:8px}
-p{color:#999;margin-bottom:12px}
-a{color:#6c63ff}
-.last-updated{color:#666;font-size:0.85rem;margin-bottom:24px}
+  .container{max-width:700px}
+  h2{font-size:20px;margin-top:28px}
+  p,li{font-size:15px}
+  .policy-date{color:#888;font-size:14px;margin-bottom:24px}
 </style>
 </head>
 <body>
 <div class="container">
-<h1>Privacy Policy</h1>
-<p class="last-updated">Last updated: June 9, 2026</p>
+  <nav class="nav">
+    <a href="/" class="nav-brand">🌙 Werewolf</a>
+    <div class="nav-links">
+      <a href="/blog/">Blog</a>
+      <a href="/strategy/">Strategy</a>
+      <a href="/rules/">Rules</a>
+      <a href="/about/">About</a>
+      <a href="/">Play Now →</a>
+    </div>
+  </nav>
 
-<h2>Information We Collect</h2>
-<p>Werewolf ("the Game") collects minimal information to function:</p>
-<p><strong>Player Name</strong> — a nickname you choose when joining a game. This is visible to other players during the game session.</p>
-<p><strong>Room Code</strong> — a randomly generated code used to join a game session.</p>
-<p><strong>Game Actions</strong> — votes, night actions, and role assignments are stored temporarily to facilitate gameplay and are deleted when the game ends or the room expires.</p>
+  <h1>Privacy Policy</h1>
+  <p class="policy-date">Last updated: June 15, 2026</p>
 
-<h2>How We Use Information</h2>
-<p>All data is used solely for operating the game. No personal information is stored permanently, sold, or shared with third parties beyond what is required to display ads.</p>
+  <h2>1. Introduction</h2>
+  <p>Werewolf ("the Game," "we," "our," "us") is committed to protecting your privacy. This policy explains what information we collect, how we use it, and your rights. The Game is provided free of charge and is open source under the MIT license.</p>
 
-<h2>Cookies & Advertising</h2>
-<p>We use Google AdSense to display advertisements. Google may use cookies and web beacons to serve ads based on your visits to this and other websites. You can learn more about Google's advertising practices at <a href="https://policies.google.com/technologies/ads" target="_blank">https://policies.google.com/technologies/ads</a>.</p>
+  <h2>2. Information We Collect</h2>
+  <p>We collect the absolute minimum data necessary to operate the Game. We do not collect any personally identifiable information beyond what you voluntarily provide during gameplay.</p>
+  
+  <h3>2.1 Player-Provided Information</h3>
+  <ul>
+    <li><strong>Player Name:</strong> A nickname you choose when joining a game room. This is visible to other players only during an active game session. We recommend using a pseudonym rather than your real name.</li>
+    <li><strong>Room Code:</strong> A randomly generated 6-character code used to identify and join your specific game session.</li>
+  </ul>
 
-<h2>Data Retention</h2>
-<p>Game data (rooms, players, roles, actions) is stored temporarily in Cloudflare Workers KV with a TTL of 24 hours. No long-term data storage occurs.</p>
+  <h3>2.2 Automatically Collected Information</h3>
+  <ul>
+    <li><strong>Game Actions:</strong> Votes, night actions (investigations, protections, kills, marks, targets), and role assignments are stored temporarily to facilitate gameplay. This data is tied only to your chosen player name and the room code.</li>
+    <li><strong>Device Information:</strong> We do not collect device IDs, IP addresses, browser fingerprints, or any other identifying technical data.</li>
+    <li><strong>Cookies:</strong> We do not set first-party cookies. Google AdSense (where enabled) may set third-party cookies for ad personalization. See Section 5 for details.</li>
+  </ul>
 
-<h2>Third-Party Services</h2>
-<p>We use Cloudflare (CDN & Workers KV) and Google AdSense. Each service has its own privacy policy governing data handling.</p>
+  <h2>3. How We Use Information</h2>
+  <p>All collected data is used solely for the following purposes:</p>
+  <ul>
+    <li><strong>Game Operation:</strong> Assigning roles, processing night actions, tallying votes, and determining game outcomes.</li>
+    <li><strong>Displaying Roles:</strong> Showing role and status information to players on their individual game screens.</li>
+    <li><strong>Serving Advertisements:</strong> Where ad-supported, we use Google AdSense to display relevant advertisements.</li>
+  </ul>
+  <p>We do not sell, rent, trade, or share your personal information with third parties for their marketing purposes.</p>
 
-<h2>Contact</h2>
-<p>For questions about this policy, contact the repository owner at <a href="https://github.com/LIONBABYCRYPTO">github.com/LIONBABYCRYPTO</a>.</p>
+  <h2>4. Data Storage and Retention</h2>
+  <h3>4.1 Storage</h3>
+  <p>Game data is stored in Cloudflare Workers KV, a globally distributed key-value store. Data is encrypted in transit and at rest.</p>
+  
+  <h3>4.2 Retention Period</h3>
+  <p>All game data (rooms, players, roles, actions) automatically expires within 24 hours of creation via our Time-To-Live (TTL) mechanism. No long-term data storage occurs. There is no user account system, so there are no profiles or historical records to delete.</p>
 
-<p style="margin-top:32px"><a href="/mafia-automated-assembly/">← Back to Game</a></p>
+  <h3>4.3 Host-Side Storage</h3>
+  <p>The game host's browser stores the room code and host token in localStorage. This allows the host to reconnect to an active game if disconnected. Clearing browser data or session expiry removes this information. No server-side storage of this data persists beyond the game session.</p>
+
+  <h2>5. Advertising</h2>
+  <p>We use Google AdSense to display advertisements on the website. Google, as a third-party vendor, uses cookies to serve ads based on your prior visits to this website and other websites.</p>
+  <p>You can learn more about Google's advertising practices at <a href="https://policies.google.com/technologies/ads" target="_blank" style="color:#6c63ff">https://policies.google.com/technologies/ads</a>.</p>
+  <p>You can opt out of personalized advertising by visiting <a href="https://www.google.com/settings/ads" target="_blank" style="color:#6c63ff">Google's Ads Settings</a>.</p>
+
+  <h2>6. Third-Party Services</h2>
+  <p>The Game relies on the following third-party services:</p>
+  <ul>
+    <li><strong>Cloudflare:</strong> Content delivery network, DNS, Workers serverless platform, and Workers KV storage. <a href="https://www.cloudflare.com/privacypolicy/" target="_blank" style="color:#6c63ff">Cloudflare Privacy Policy</a>.</li>
+    <li><strong>Google AdSense:</strong> Advertisement serving. <a href="https://policies.google.com/privacy" target="_blank" style="color:#6c63ff">Google Privacy Policy</a>.</li>
+    <li><strong>GitHub Pages:</strong> Static site hosting. <a href="https://docs.github.com/en/github/site-policy/github-privacy-statement" target="_blank" style="color:#6c63ff">GitHub Privacy Statement</a>.</li>
+  </ul>
+
+  <h2>7. Data Security</h2>
+  <p>We implement appropriate technical and organizational measures to protect your data, including:</p>
+  <ul>
+    <li>Encryption in transit via HTTPS/TLS for all communications</li>
+    <li>Encryption at rest for stored game data</li>
+    <li>Automatic data expiry through TTL mechanisms</li>
+    <li>No long-term storage of game history or player identities</li>
+  </ul>
+  <p>However, no method of electronic storage or transmission is 100% secure. We cannot guarantee absolute security.</p>
+
+  <h2>8. Children's Privacy</h2>
+  <p>The Game is a general audience product and is not directed at children under 13. We do not knowingly collect personal information from children. If you believe a child has provided us with personal information, please contact us and we will delete it.</p>
+
+  <h2>9. Your Rights</h2>
+  <p>Depending on your jurisdiction, you may have rights including:</p>
+  <ul>
+    <li>The right to request access to personal data we hold about you</li>
+    <li>The right to request deletion of your data</li>
+    <li>The right to withdraw consent (where processing is based on consent)</li>
+    <li>The right to opt out of personalized advertising (see Section 5)</li>
+  </ul>
+  <p>To exercise any of these rights, please open an issue on our GitHub repository. Since we maintain no permanent user accounts or long-term data storage, most data is automatically deleted within 24 hours.</p>
+
+  <h2>10. Changes to This Policy</h2>
+  <p>We may update this policy from time to time. Changes will be posted on this page with an updated "Last updated" date. We encourage you to review this policy periodically.</p>
+
+  <h2>11. Contact</h2>
+  <p>For questions about this privacy policy, please open an issue on our GitHub repository: <a href="https://github.com/LIONBABYCRYPTO/mafia-automated-assembly" target="_blank" style="color:#6c63ff">github.com/LIONBABYCRYPTO/mafia-automated-assembly</a>.</p>
+
+  <p style="margin-top:32px"><a href="/" style="color:#6c63ff">← Back to Game</a></p>
+
+  <footer class="footer">
+    <div class="footer-links">
+      <a href="/terms.html">Terms of Service</a>
+      <a href="https://github.com/LIONBABYCRYPTO/mafia-automated-assembly">GitHub</a>
+    </div>
+    <p>© 2026 Werewolf. Open source under MIT license.</p>
+  </footer>
 </div>
 </body>
 </html>

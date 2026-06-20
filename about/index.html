@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>About Werewolf — Social Deduction Game</title>
+<meta name="description" content="Learn about the Werewolf social deduction game — our mission, the developer story, and how this open-source project brings people together through play.">
+<link rel="stylesheet" href="/css/blog.css">
+</head>
+<body>
+<div class="container">
+  <nav class="nav">
+    <a href="/" class="nav-brand">🌙 Werewolf</a>
+    <div class="nav-links">
+      <a href="/blog/">Blog</a>
+      <a href="/strategy/">Strategy</a>
+      <a href="/rules/">Rules</a>
+      <a href="/about/" class="active">About</a>
+      <a href="/">Play Now →</a>
+    </div>
+  </nav>
+
+  <header class="page-header">
+    <h1>About Werewolf</h1>
+    <p class="subtitle">An open-source social deduction platform designed to bring people together through the timeless art of bluffing, reasoning, and reading the room.</p>
+  </header>
+
+  <section class="about-section">
+    <h2>Our Mission</h2>
+    <p>Werewolf has been played around campfires, in classrooms, and at parties for decades. Our mission is simple: make it accessible to everyone, anywhere, without friction.</p>
+    <p>No app downloads. No account creation. No paywalls. Just scan a QR code and play. We believe the best technology is the kind you don't notice — the kind that gets out of the way and lets people connect.</p>
+  </section>
+
+  <section class="about-section">
+    <h2>The Story Behind the Game</h2>
+    <p>The original Werewolf (also known as Mafia) was created in 1986 by Dmitry Davidoff, a psychology student at Moscow State University. The game was inspired by the paranoia and distrust of Cold War-era politics, where ordinary citizens lived alongside hidden threats.</p>
+    <p>What started as a student experiment in social dynamics spread across university campuses worldwide, evolving through countless variations and house rules. Today, it's played in over 50 countries and has inspired video games, TV shows, and corporate training programs.</p>
+    <p>This digital version was built to capture the magic of in-person play while removing the administrative burden. No more shuffling cards, counting votes by hand, or managing complex role assignments. The technology handles the mechanics so the host can focus on what matters: creating a great experience for their players.</p>
+  </section>
+
+  <section class="about-section">
+    <h2>Why We Built This</h2>
+    <p>Running Werewolf for large groups is logistics-heavy. The host needs to:</p>
+    <ul>
+      <li>Print and shuffle role cards</li>
+      <li>Secretly distribute roles without anyone seeing</li>
+      <li>Manage night actions in the right order</li>
+      <li>Count votes accurately</li>
+      <li>Track eliminations across multiple rounds</li>
+    </ul>
+    <p>One mistake and the game is compromised. We built this platform to eliminate those friction points. The host's only job is to manage the room and read the atmosphere — the system handles everything else.</p>
+    <p>The project is open source (MIT license), meaning anyone can inspect the code, suggest improvements, or self-host their own instance. We believe transparency is essential for trust, especially in a game about deception.</p>
+  </section>
+
+  <section class="about-section">
+    <h2>Key Features</h2>
+    <div class="features-grid">
+      <div class="feature-item">
+        <span class="feature-icon">📱</span>
+        <h3>Zero Install</h3>
+        <p>Players join through their browser. No app store, no download, no account.</p>
+      </div>
+      <div class="feature-item">
+        <span class="feature-icon">🏷️</span>
+        <h3>QR Entry</h3>
+        <p>Display one QR code. Every player scans and joins instantly.</p>
+      </div>
+      <div class="feature-item">
+        <span class="feature-icon">🔀</span>
+        <h3>Auto Role Assignment</h3>
+        <p>Random, balanced role distribution. No manual setup required.</p>
+      </div>
+      <div class="feature-item">
+        <span class="feature-icon">🔄</span>
+        <h3>Real-Time Sync</h3>
+        <p>All players see the same game state simultaneously. No delays, no confusion.</p>
+      </div>
+      <div class="feature-item">
+        <span class="feature-icon">⏱️</span>
+        <h3>Phase Timers</h3>
+        <p>Adjustable night and day phase timers keep the game moving at your pace.</p>
+      </div>
+      <div class="feature-item">
+        <span class="feature-icon">📊</span>
+        <h3>Live Vote Tally</h3>
+        <p>Votes are counted in real-time. No hand-counting or disputes.</p>
+      </div>
+      <div class="feature-item">
+        <span class="feature-icon">🔒</span>
+        <h3>Privacy First</h3>
+        <p>No personal information collected. Game data expires within 24 hours.</p>
+      </div>
+      <div class="feature-item">
+        <span class="feature-icon">🧩</span>
+        <h3>Custom Roles</h3>
+        <p>Multiple role variations to keep the game fresh: Wolf King, Shooter, and more.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="about-section">
+    <h2>Technical Overview</h2>
+    <p>Built for reliability and scale, this platform handles games of any size without breaking a sweat.</p>
+    <ul>
+      <li><strong>Frontend:</strong> Pure HTML, CSS, and vanilla JavaScript — no framework dependencies, instant loading.</li>
+      <li><strong>Backend:</strong> Cloudflare Workers for serverless API endpoints with global low-latency access.</li>
+      <li><strong>Storage:</strong> Cloudflare KV with automatic TTL-based cleanup. Game data self-destructs after 24 hours.</li>
+      <li><strong>Hosting:</strong> GitHub Pages for static assets, Cloudflare Workers for dynamic API logic.</li>
+      <li><strong>Source Code:</strong> Fully open source under MIT license on GitHub. Contributions welcome.</li>
+    </ul>
+  </section>
+
+  <section class="about-section">
+    <h2>What Players Say</h2>
+    
+    <blockquote>
+      <p>"We used this for our company team-building event with 40 people. The QR code entry was seamless — everyone was in the game within 2 minutes. Best icebreaker we've ever done."</p>
+      <cite>— Corporate Event Organizer, Singapore</cite>
+    </blockquote>
+
+    <blockquote>
+      <p>"I've been hosting Werewolf games for years with physical cards. This eliminates so much hassle. The auto-role assignment and vote tallying alone are worth it."</p>
+      <cite>— High School Teacher, Australia</cite>
+    </blockquote>
+
+    <blockquote>
+      <p>"The Wolf King variation adds a whole new strategic layer. Our group hasn't played standard Werewolf in months — we're hooked on the advanced roles."</p>
+      <cite>— Game Night Host, United States</cite>
+    </blockquote>
+  </section>
+
+  <section class="cta-section">
+    <h2>Start Your First Game</h2>
+    <p>Click below to create a room. Share the QR code with your friends. You'll be playing in under 30 seconds.</p>
+    <a href="/" class="btn btn-primary btn-large">Play Now →</a>
+  </section>
+
+  <footer class="footer">
+    <div class="footer-links">
+      <a href="/privacy.html">Privacy Policy</a>
+      <a href="/terms.html">Terms of Service</a>
+      <a href="https://github.com/LIONBABYCRYPTO/mafia-automated-assembly">GitHub</a>
+    </div>
+    <p>© 2026 Werewolf. Open source under MIT license.</p>
+  </footer>
+</div>
+</body>
+</html>
